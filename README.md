@@ -87,11 +87,11 @@ OTAgo can only exist with support from the community. There are many ways you ca
 
 **Note**: when submitting a pull request, please use lots of small commits verses one huge commit. It makes it much easier to merge in when there are several pull requests that need to be combined for a new version.
 
-## Why's the project called OTAgo, and why is a Koala involved?
+## Why's the project called OTAgo, and why is a koala involved?
 
 I'm personally very concerned about the planet and the current Climate Emergency we're in. During the time I've been developing this project, there have been massive bushfires in Australia. I wanted to name the project after the situation. There are several places in Australia named `Otago` which has an obvious link to `OTA`; it felt like a perfect name. The koala is a reference to the hundreds of thousands of animals killed during the fires.
 
-
+My thanks to [Freepik](https://www.flaticon.com/authors/freepik) at [flaticon.com](https://www.flaticon.com/) for providing the [koala](https://www.flaticon.com/free-icon/koala_2424348) used in the OTAgo logo.
 
 
 
