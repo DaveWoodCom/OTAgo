@@ -1,0 +1,270 @@
+/*
+// OTAgo
+// - OTA App Distribution System
+// - https://github.com/DaveWoodCom/OTAgo
+// - Copyright 2020 Dave Wood, Cerebral Gardens Inc.
+*/
+
+* {
+  box-sizing: border-box;
+}
+
+html,body{
+	height: 100%
+}
+
+body {
+	background-color: #ffffff;
+	font-family: 'Helvetica Neue Thin', sans-serif;
+	color: #000000;
+	margin: 0px;
+}
+
+#page {
+	min-height: 100%;
+	position: relative;
+}
+
+img {
+	border: 0px solid clear;
+}
+
+p {
+	font-family: 'Helvetica Neue Thin', sans-serif;
+	font-size: 16pt;
+}
+
+h1 {
+	color: #7355b0;
+}
+
+a:link {
+	color: #7355b0;
+	text-decoration: none;
+}
+a:visited {
+	color: #7355b0;
+	text-decoration: none;
+}
+a:hover {
+	color: green;
+	text-decoration: underline;
+}
+a:active {
+	color: #7355b0;
+	text-decoration: none;
+}
+
+.vertical-center {
+	margin: 0;
+	position: relative;
+	top: 50%;
+	-ms-transform: translateY(-50%);
+	transform: translateY(-50%);
+}
+
+div.header {
+	background-color: #7355b0;
+	height: 101pt;
+}
+div.header p {
+}
+div.headerTop {
+	background-color: #7355b0;
+	height: 30pt;
+}
+div.headerTop p {
+}
+div.headerBottom {
+	background-color: #ffffff;
+	height: 70pt;
+	position: relative;
+}
+div.headerBottom p {
+	margin:  0px 0px 0px 20px;
+	padding: 0px;
+}
+div.headerKeyline {
+	background-color: #7355b0;
+	height: 1px;
+}
+
+div.logo {
+	margin: 20px;
+	float: left;
+}
+div.appIconContainer {	
+    -webkit-filter: drop-shadow(0px 3px 10px rgba(0,0,0,0.2));
+    -moz-filter: drop-shadow(0px 3px 10px rgba(0,0,0,0.2));
+    -ms-filter: drop-shadow(0px 3px 10px rgba(0,0,0,0.2));
+    -o-filter: drop-shadow(0px 3px 10px rgba(0,0,0,0.2));
+    
+	margin: 0px auto;
+	position: relative;
+	z-index: 0;
+}
+div.appIconContainer img {
+	mask-image: url('../images/iconmask.svg');
+	-webkit-mask-image: url('../images/iconmask.svg');
+	z-index: 1;
+}
+
+div.appTitle {
+}
+div.appTitle p {
+	font-family: 'Helvetica Neue Thin', sans-serif;
+	font-size: 44pt;
+	font-weight: 300;
+	color: #7355b0;
+	margin: 0px 0px 0px 20px;
+}
+
+div.appIntro {
+}
+div.appIntro p {
+	font-family: 'Helvetica Neue Thin', sans-serif;
+	font-size: 20pt;
+	font-weight: normal;
+	margin: 20px;
+	color: #000000;
+}
+div.appIntro p a:link {
+	color: #7355b0;
+	text-decoration: none;
+}
+div.appIntro p a:visited {
+	color: #7355b0;
+	text-decoration: none;
+}
+div.appIntro p a:hover {
+	color: #7355b0;
+	text-decoration: underline;
+}
+div.appIntro p a:active {
+	color: #7355b0;
+	text-decoration: none;
+}
+
+div.actionButton {
+	height: 3.25rem;
+	padding: 10px 50px 10px 10px;
+	float: right;
+}
+div.actionButton a:link {
+	font-family: 'Helvetica Neue Thin', sans-serif;
+	font-size: 16pt;
+	font-weight: 500;
+	line-height: 1.5;
+	padding-left: 50px;
+	padding-right: 50px;
+	padding-top: 20px;
+	padding-bottom: 20px;
+	margin: 10px;
+	text-decoration: none;
+	border-radius: 5px;
+
+	color: #ffffff;
+	background-color: #7355b0;
+}
+div.actionButton a:visited {
+	font-family: 'Helvetica Neue Thin', sans-serif;
+	font-size: 16pt;
+	font-weight: 500;
+	line-height: 1.5;
+	padding-left: 50px;
+	padding-right: 50px;
+	padding-top: 20px;
+	padding-bottom: 20px;
+	margin: 10px;
+	text-decoration: none;
+	border-radius: 5px;
+
+	color: #ffffff;
+	background-color: #7355b0;
+}
+div.actionButton a:hover {
+	font-family: 'Helvetica Neue Thin', sans-serif;
+	font-size: 16pt;
+	font-weight: 500;
+	line-height: 1.5;
+	padding-left: 50px;
+	padding-right: 50px;
+	padding-top: 20px;
+	padding-bottom: 20px;
+	margin: 10px;
+	text-decoration: none;
+	border-radius: 5px;
+
+	color: #7355b0;
+	background-color: #ffffff;	
+	border: 1px solid #7355b0;
+}
+div.actionButton a:active {
+	font-family: 'Helvetica Neue Thin', sans-serif;
+	font-size: 16pt;
+	font-weight: 500;
+	line-height: 1.5;
+	padding-left: 50px;
+	padding-right: 50px;
+	padding-top: 20px;
+	padding-bottom: 20px;
+	margin: 10px;
+	text-decoration: none;
+	border-radius: 5px;
+
+	color: #ffffff;
+	background-color: #7355b0;
+}
+
+div.pageBottom {
+	margin: 0px;
+	background-color: #2a2c2e;
+    position: absolute;
+    bottom: 0;
+    width: 100%;	
+}
+div.pageFooter {
+	height: 40px;
+}
+span.pageFooterText {
+	font-family: 'Helvetica Neue Thin', sans-serif;
+	font-size: 16pt;
+	font-weight: 300;
+	color: #ffffff;
+	padding: 0px 20px 0px 20px;
+	float: left;
+}
+span.pageFooterText a:link {
+	color: #ffffff;
+	text-decoration: none;
+}
+span.pageFooterText a:visited {
+	color: #ffffff;
+	text-decoration: none;
+}
+span.pageFooterText a:hover {
+	color: #7355b0;
+	text-decoration: underline;
+}
+span.pageFooterText a:active {
+	color: #ffffff;
+	text-decoration: none;
+}
+
+span.footerCopyright {
+	font-family: 'Helvetica Neue Thin', sans-serif;
+	font-size: 16pt;
+	font-weight: 300;
+	color: #ffffff;
+	float: right;
+	padding: 0px 20px 0px 20px;
+}
+
+/* Desktop */
+@media only screen and (min-width: 768px) {
+	.otagoTitle { width: 1200px; margin: auto; }
+	.appTitle { width: 1200px; margin: auto; }
+	.appIntro { width: 1200px; margin: auto; }
+	.pageFooter	{ width: 1200px; margin: auto; }
+}
+
