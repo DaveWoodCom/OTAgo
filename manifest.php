@@ -5,7 +5,7 @@
 // - Copyright 2020 Dave Wood, Cerebral Gardens Inc.
 
 require_once('common.php');
-require_once('configuration.php');
+require_once('configuration.default.php');
 require_once($authFile);
 
 $username = $_GET['u'];
