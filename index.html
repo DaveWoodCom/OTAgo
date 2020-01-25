@@ -24,24 +24,30 @@
 		</div>
 
 		<div class="appTitle">
-			<p>Install `My App`</p>
+			<p>About `My App`</p>
 		</div>
 
 		<div class="appIntro">
 			<div class="logo">
 				<div class="appIconContainer">
-					<a href="{{InstallURL}}"><img src="images/1024.png" width="256" height="256" alt="" class="appIcon" /></a>
+					<a href="/protected.php"><img src="images/1024.png" width="256" height="256" alt="" class="appIcon" /></a>
 				</div>
 			</div>
 			<p>
-				This is the protected install page for `My App`. In order to view this page, the visitor will have had to be authorized by whichever auth system you've enabled in the configuration. The initial release of OTAgo includes a `simpleAuth` option that allows you to supply a list of username/password pairs. As well as a `noAuth` option that lets everyone through the door.
+				This is an intro page, that explains a little about the app and perhaps lets the visitor know they'll need a username/password to access the <a href="/protected.php">protected</a> page with the install link on it.
 			</p>
 			<p>
-				A future version of this project may allow users to select which build of the app to install, in case you need users to be able to install older versions for regression testing etc. Feel free to submit a pull request with this feature. 😁 (Ideally this feature would read build information from a .json file that could be automatically updated by a CI/CD system.
+				Having an intro page that's open to the public just makes the install process a little easier for your customers/users, since they're not immediately presented with a login dialog when they navigate to your site.
+			</p>
+			<p>
+				You can also use this space to build up some hype for your upcoming app, perhaps include an option for the visitor to subscribe to your newsletter, so they can be promptly notified when the app is available to the public. Maybe even with an intro discount or something.
+			</p>
+			<p>
+				If you're on our private beta test list, or an employee of our company, you can tap the 'Next' button below to proceed to the download page. You will need your username/password to continue.
 			</p>
 			<div class="actionButton">
 				<br />
-				<a href="{{InstallURL}}">Install</a>
+				<a href="/protected.php">Next</a>
 			</div>
 			<p>
 				<br />
