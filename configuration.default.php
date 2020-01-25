@@ -5,7 +5,7 @@
 // - Copyright 2020 Dave Wood, Cerebral Gardens Inc.
 
 // Authentication
-$authFile = 'simpleAuth.php';
+$authFile = 'auth/simple/simpleAuth.php';
 
 // Web Template
 $webTemplate = 'templates/webTemplate.html';
