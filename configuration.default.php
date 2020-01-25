@@ -6,6 +6,10 @@
 
 // Authentication
 $authFile = 'auth/simple/simpleAuth.php';
+$users = array(
+	'dave' => 'secr3t',
+	'john' => 'hunter2'
+);
 
 // Web Template
 $webTemplate = 'templates/webTemplate.html';

@@ -8,10 +8,9 @@
 // You can swap in an alternate authentication system that connects to a database, or
 // uses OAuth etc.
 
-$users = array(
-	'dave' => 'secr3t',
-	'john' => 'hunter2'
-);
+if (!isset($users)) {
+	$users = array();
+}
 
 // You must include a function with this signature.
 // Return true/false if the username/password is a valid combination.
