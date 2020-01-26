@@ -4,18 +4,27 @@
 // - https://github.com/DaveWoodCom/OTAgo
 // - Copyright 2020 Dave Wood, Cerebral Gardens Inc.
 
-// Authentication
+// Choose one authentication method
+// Current options: None, or Simple Auth
+
+// Authentication - None
+// $authFile = 'auth/none/none.php';
+
+// Authentication - Simple Auth
 $authFile = 'auth/simple/simpleAuth.php';
+$simpleAuthTempDirectory = '/tmp';
+$simpleAuthTokenLifetime = 3600; // 1 hour (3600 seconds)
 $users = array(
 	'dave' => 'secr3t',
 	'john' => 'hunter2'
 );
 
-// Web Template
+// Templates
+// -- Web
 $webTemplate = 'templates/webTemplate.html';
 $installURLPlacehHolder = '{{InstallURL}}';
 
-// Manifest
+// -- Manifest
 $manifestTemplate = 'templates/manifest.plist';
 $ipaURLPlacehHolder = '{{IPAURL}}';
 

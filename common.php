@@ -18,3 +18,14 @@ function requestBasicAuthentication($realm) {
     http_response_code(401);
     exit;
 }
+
+function makeURLQueryString($parameters, $joinString) {
+	$pairs = array();
+	
+	foreach ($parameters as $name => $value) {
+		$pairs[] = urlencode($name) . '=' . urlencode($value);
+	}
+	
+	return implode($joinString, $pairs);
+}
+

@@ -13,18 +13,9 @@ else {
 }
 require_once($authFile);
 
-$username = $_GET['u'];
-$password = $_GET['p'];
-if (empty($username)) {
-	$username = $_SERVER['PHP_AUTH_USER'];
-}
-if (empty($password)) {
-	$password = $_SERVER['PHP_AUTH_PW'];
-}
-
 preventCaching();
 
-if (!isValidUser($username, $password)) {
+if (!isValidUser()) {
     requestAuthentication();
     exit();
 }

@@ -13,25 +13,16 @@ else {
 }
 require_once($authFile);
 
-$username = $_GET['u'];
-$password = $_GET['p'];
-if (empty($username)) {
-	$username = $_SERVER['PHP_AUTH_USER'];
-}
-if (empty($password)) {
-	$password = $_SERVER['PHP_AUTH_PW'];
-}
-
 preventCaching();
 
-if (!isValidUser($username, $password)) {
+if (!isValidUser()) {
     requestAuthentication();
     exit();
 }
 
 $manifest = file_get_contents($manifestTemplate);
 
-$ipaURL = $baseURL . 'ipa.php?u=' . urlencode($username) . '&amp;p=' . urlencode($password);
+$ipaURL = $baseURL . 'ipa.php?' . makeURLQueryString(queryStringAuthParameters(), '&amp;');
 $manifest = str_replace($ipaURLPlacehHolder, $ipaURL, $manifest);
 
 echo $manifest;

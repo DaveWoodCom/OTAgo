@@ -9,9 +9,15 @@
 // uses OAuth etc.
 
 // You must include a function with this signature.
-// Return true/false if the username/password is a valid combination.
-function isValidUser($username, $password) {
+// Return true/false if the current user is a valid user.
+function isValidUser() {
 	return true;
+}
+
+// You must include a function with this signature.
+// Return an associated array with name/value pairs to be appended to OTAgo URLs (to pass the authentication through).
+function queryStringAuthParameters() {
+	return array();
 }
 
 // You must include a function with this signature.
