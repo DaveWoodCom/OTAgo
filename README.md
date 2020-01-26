@@ -35,7 +35,9 @@ Clone the repo into a folder accessible via HTTPS. You must use HTTPS with a val
 
 ### Configuration
 
-Edit the file `configuration.php` file.
+Copy the file `configuration.default.php` to `configuration.php`. You'll configure the system by editing the copy. You should back this file up as it's excluded from the git repository by default.
+
+Configuration variables:
 
 `$authFile` -> filename of a `.php` file to handle the authentication (see below).  
 `$webTemplate` -> the `.html` template to be displayed to the user before they install the app.  
@@ -45,21 +47,47 @@ Edit the file `configuration.php` file.
 `$ipaFile` -> the `.ipa` file signed for distribution.  
 `$baseURL` -> During an OTA installation, some files need to be referenced by their full URL. OTAgo uses a default value for the baseURL, however it's not likely going to match your actual URL, so you'll want to set this directly.  
 
+The authentication system used may have additional options, examples are in the `configuration.default.php` file.
+
 The files above do not need to be located in a publicly accessible folder, their contents will be served by the OTAgo scripts.
 
 ### AuthFile
 
-The `$authFile` variable above needs to name a file that can be included by the OTAgo scripts. This allows you to sub in different methods of authentication, a simple list of username/passwords, connect to an external database, or use OAuth. Currently OTAgo includes a `simpleAuth.php` file that handles a basic list of username/password pairs.
+The `$authFile` variable above needs to name a file that can be included by the OTAgo scripts. This allows you to sub in different methods of authentication, a simple list of username/passwords, connect to an external database, or use OAuth. Currently OTAgo includes two authentication options: 
+
+##### None
+
+This effectively removes authentication, and allows anyone to install the app. Of course, iOS will require the `.ipa` file to be signed with a profile that includes the required device ids, or optionally, an Enterprise certificate.
+
+To disable authentication, set `$authFile = 'auth/none/none.php';` in the `configuration.php` file.
+
+##### Simple Auth
+
+Simple Auth allows you to create a simple list of username/passwords. Add them to the `$users` array in the `configuration.php` file.
+
+There are a two other options you should set:
+
+`$simpleAuthTempDirectory`: a temporary directory where the authentication system can store access tokens (the web server needs write permission). Our example configuration uses `/tmp`, but it would be more secure to use a folder that is inaccessible to other users on the system.  
+
+`$simpleAuthTokenLifetime`: the number of seconds a token should be valid. By default we set it to 3600 seconds (1 hour), which should be fine for most cases.  
+
+##### Custom Authentication
 
 If you wish to use another authentication method, you need to create an alternate authFile that includes the following methods:
 
 
 ```php
-	function isValidUser($username, $password)
+	function isValidUser()
 ```
 
-This takes in a username and password and must return `true` if they the user is authorized to install the app.
+This takes no parameters and must determine if the current user is valid or not. Return `true` if they the user is authorized to install the app.
 
+
+```php
+	function queryStringAuthParameters()
+```
+
+This method takes no arguments. It must return an associated array with name/value pairs to be appended to OTAgo URLs. This is how OTAgo will pass the authentication through to the manifest and ipa URLs.
 
 ```php
 	function requestAuthentication()
