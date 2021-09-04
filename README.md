@@ -124,9 +124,9 @@ My thanks to [Freepik](https://www.flaticon.com/authors/freepik) at [flaticon.co
 
 
 
-[otago-logo]: https://github.com/DaveWoodCom/OTAgo/raw/master/logo.png
+[otago-logo]: https://github.com/DaveWoodCom/OTAgo/raw/main/logo.png
 [php.net]: https://php.net/
-[license]: https://github.com/DaveWoodCom/OTAgo/blob/master/LICENSE
+[license]: https://github.com/DaveWoodCom/OTAgo/blob/main/LICENSE
 
 [mastodon-davewoodx]: https://mastodon.social/@davewoodx
 [twitter-davewoodx]: https://twitter.com/davewoodx
