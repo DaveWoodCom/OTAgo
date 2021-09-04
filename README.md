@@ -12,7 +12,7 @@
 
 ## About
 
-OTAgo is an OTA app distribution system that allows you and your users to securely install their iOS apps over the air (OTA) using Apple's officially supported method [documented here](https://support.apple.com/en-ca/guide/deployment-reference-ios/apda0e3426d7/web).
+OTAgo is an OTA app distribution system that allows you and your users to securely install their iOS and/or Android apps over the air (OTA). iOS distribution uses Apple's officially supported method [documented here](https://support.apple.com/en-ca/guide/deployment-reference-ios/apda0e3426d7/web).
 
 ## Communication
 
@@ -51,7 +51,7 @@ Configuration variables:
     * `$ipaURLPlacehHolder` -> a placeholder token in the above manifest template file where the authenticated URL will be swapped in.
     * `$ipaFile` -> the `.ipa` file for iOS/iPadOS distribution.
 
-* `$enableAndroid` -> set to true if you support iOS/iPadOS, then configure the iOS specific variables:
+* `$enableAndroid` -> set to true if you support Android, then configure the Android specific variables:
     * `$apkFile` -> the `.apk` file for Android distribution.
 
 The authentication system used may have additional options, examples are in the `configuration.default.php` file.
@@ -157,4 +157,3 @@ My thanks to [Freepik](https://www.flaticon.com/authors/freepik) at [flaticon.co
 [nginx]: https://nginx.org/
 [apache]: https://httpd.apache.org/
 [letsencrypt]: https://letsencrypt.org/
-
