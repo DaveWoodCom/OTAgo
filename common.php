@@ -19,6 +19,11 @@ function requestBasicAuthentication($realm) {
     exit;
 }
 
+function returnInvalidConfiguration() {
+    http_response_code(501);
+    exit;
+}
+
 function makeURLQueryString($parameters, $joinString) {
 	$pairs = array();
 	

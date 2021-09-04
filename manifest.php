@@ -20,6 +20,11 @@ if (!isValidUser()) {
     exit();
 }
 
+if (!$enableIOS) {
+    returnInvalidConfiguration();
+    exit();
+}
+
 $manifest = file_get_contents($manifestTemplate);
 
 $ipaURL = $baseURL . 'ipa.php?' . makeURLQueryString(queryStringAuthParameters(), '&amp;');

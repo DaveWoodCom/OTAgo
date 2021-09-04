@@ -4,6 +4,9 @@
 // - https://github.com/DaveWoodCom/OTAgo
 // - Copyright 2020 Dave Wood, Cerebral Gardens Inc.
 
+// Can override the baseURL if the detected one in common.php isn't correct.
+// $baseURL = 'https://example.com/app/';
+
 // Choose one authentication method
 // Current options: None, or Simple Auth
 
@@ -24,12 +27,21 @@ $users = array(
 $webTemplate = 'templates/webTemplate.html';
 $installURLPlacehHolder = '{{InstallURL}}';
 
-// -- Manifest
-$manifestTemplate = 'templates/manifest.plist';
-$ipaURLPlacehHolder = '{{IPAURL}}';
+// Supported OSes
+// -- iOS/iPadOS
+$enableIOS = true;
+if ($enableIOS) {
+	// -- Manifest
+	$manifestTemplate = 'templates/manifest.plist';
+	$ipaURLPlacehHolder = '{{IPAURL}}';
 
-// IPA File
-$ipaFile = 'MyApp.ipa';
+	// IPA File
+	$ipaFile = 'MyApp.ipa';
+}
 
-// Can override the baseURL if the detected one in common.php isn't correct.
-// $baseURL = 'https://example.com/app/';
+// -- Android
+$enableAndroid = true;
+if ($enableAndroid) {
+	// APK File
+	$apkFile = 'MyApp.apk';
+}

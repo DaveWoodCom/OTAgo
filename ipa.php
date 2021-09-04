@@ -20,4 +20,9 @@ if (!isValidUser()) {
     exit();
 }
 
+if (!$enableIOS) {
+    returnInvalidConfiguration();
+    exit();
+}
+
 readfile($ipaFile);

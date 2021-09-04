@@ -27,7 +27,9 @@ OTAgo is an OTA app distribution system that allows you and your users to secure
 
 * HTTPS enabled web server ([nginx][nginx] or [Apache][apache] recommended)
 * PHP 7.x
-* .ipa file signed with an ad-hoc or enterprise distribution profile
+* binary files to distribute (at least one of):
+    * .ipa file (signed with an ad-hoc or enterprise distribution profile)
+    * .apk file (fat file, not an app bundle, or an apk split per abi)
 
 ## How to Use
 
@@ -39,13 +41,18 @@ Copy the file `configuration.default.php` to `configuration.php`. You'll configu
 
 Configuration variables:
 
-`$authFile` -> filename of a `.php` file to handle the authentication (see below).  
-`$webTemplate` -> the `.html` template to be displayed to the user before they install the app.  
-`$installURLPlacehHolder` -> a placeholder token for the link that will start the app installation.  
-`$manifestTemplate` -> the `manifest.plist` template used to install the app.  
-`$ipaURLPlacehHolder` -> a placeholder token in the above manifest template file where the authenticated URL will be swapped in.  
-`$ipaFile` -> the `.ipa` file signed for distribution.  
-`$baseURL` -> During an OTA installation, some files need to be referenced by their full URL. OTAgo uses a default value for the baseURL, however it's not likely going to match your actual URL, so you'll want to set this directly.  
+* `$baseURL` -> During an OTA installation, some files need to be referenced by their full URL. OTAgo uses a default value for the baseURL, however it's not likely going to match your actual URL, so you'll want to set this directly.
+* `$authFile` -> filename of a `.php` file to handle the authentication (see below).
+* `$webTemplate` -> the `.html` template to be displayed to the user before they install the app.
+* `$installURLPlacehHolder` -> a placeholder token for the link that will start the app installation.
+
+* `$enableIOS` -> set to true if you support iOS/iPadOS, then configure the iOS specific variables:
+    * `$manifestTemplate` -> the `manifest.plist` template used to install the app.
+    * `$ipaURLPlacehHolder` -> a placeholder token in the above manifest template file where the authenticated URL will be swapped in.
+    * `$ipaFile` -> the `.ipa` file for iOS/iPadOS distribution.
+
+* `$enableAndroid` -> set to true if you support iOS/iPadOS, then configure the iOS specific variables:
+    * `$apkFile` -> the `.apk` file for Android distribution.
 
 The authentication system used may have additional options, examples are in the `configuration.default.php` file.
 
@@ -98,7 +105,7 @@ This method takes no arguments, and returns no value. It must send whatever is n
 
 ### Templates
 
-The `$webTemplate` file needs to be an HTML web page that will be displayed to the user. This can be as simple a single link, or more complicated with details about the app with instructions for the user on how to install it (trusting the Enterprise certificate for example). The template file itself does not need to be in a publicly accessible folder, however any files the page links to, images, stylesheets, etc must be. The `$webTemplate` file should have at least one link with the `href` set to the `$installURLPlacehHolder` (`{{InstallURL}}` in our demo). That link will start the install process when the user taps it.
+The `$webTemplate` file needs to be an HTML file that will be displayed to the user. This can be basic HTML with a single link, or more complicated with details about the app with instructions for the user on how to install it (trusting the Enterprise certificate for example). The template file itself does not need to be in a publicly accessible folder, however any files the page links to, images, stylesheets, etc must be. The `$webTemplate` file should have at least one link with the `href` set to the `$installURLPlacehHolder` (`{{InstallURL}}` in our demo). That link will start the install process when the user taps it.
 
 The `$manifestTemplate` file needs to be a valid `manifest.plist` file (see [Apple's documentation](https://support.apple.com/en-ca/guide/deployment-reference-ios/apd11fd167c4/web) for specifics), but instead of specifying the URL for the `.ipa` file, use the `$ipaURLPlacehHolder` placeholder (`{{IPAURL}}` in our demo). The authenticated URL will be substituted into the `.plist` file before it's sent to the user's device.
 

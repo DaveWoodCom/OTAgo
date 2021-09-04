@@ -20,10 +20,22 @@ if (!isValidUser()) {
     exit();
 }
 
+$userAgent = strtolower($_SERVER['HTTP_USER_AGENT']);
+if ($enableAndroid && stripos($userAgent, 'android') !== false) {
+	// Android
+	$installURL = $baseURL . urlencode($apkFile);
+}
+elseif ($enableIOS) {
+    // Sadly we can't detect iOS/iPadOS via the User-Agent, so for now, just assuming iOS
+    // TODO: Use a client side method to detect iPhone vs iPad (or macOS/Linux etc)
+    $manifestURL = $baseURL . 'manifest.php?' . makeURLQueryString(queryStringAuthParameters(), '&');
+	$installURL = 'itms-services://?action=download-manifest&url=' . urlencode($manifestURL);
+}
+else {
+    returnInvalidConfiguration();
+    exit();
+}
+
 $html = file_get_contents($webTemplate);
-
-$manifestURL = $baseURL . 'manifest.php?' . makeURLQueryString(queryStringAuthParameters(), '&');
-$installURL = 'itms-services://?action=download-manifest&url=' . urlencode($manifestURL);
-
 $html = str_replace($installURLPlacehHolder, $installURL, $html);
 echo $html;
