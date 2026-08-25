@@ -25,7 +25,7 @@ $users = array(
 // Templates
 // -- Web
 $webTemplate = 'templates/webTemplate.html';
-$installURLPlacehHolder = '{{InstallURL}}';
+$installURLPlaceholder = '{{InstallURL}}';
 
 // Supported OSes
 // -- iOS/iPadOS
@@ -33,7 +33,7 @@ $enableIOS = true;
 if ($enableIOS) {
 	// -- Manifest
 	$manifestTemplate = 'templates/manifest.plist';
-	$ipaURLPlacehHolder = '{{IPAURL}}';
+	$ipaURLPlaceholder = '{{IPAURL}}';
 
 	// IPA File
 	$ipaFile = 'MyApp.ipa';

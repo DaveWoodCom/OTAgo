@@ -17,7 +17,7 @@ preventCaching();
 
 if (!isValidUser()) {
     requestAuthentication();
-    exit();
+    exit(); // Backstop in case a custom auth provider's requestAuthentication() forgets to exit
 }
 
 if (!$enableIOS) {

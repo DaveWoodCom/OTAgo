@@ -17,10 +17,10 @@ preventCaching();
 
 if (!isValidUser()) {
     requestAuthentication();
-    exit();
+    exit(); // Backstop in case a custom auth provider's requestAuthentication() forgets to exit
 }
 
-$userAgent = strtolower($_SERVER['HTTP_USER_AGENT']);
+$userAgent = $_SERVER['HTTP_USER_AGENT'] ?? '';
 if ($enableAndroid && stripos($userAgent, 'android') !== false) {
 	// Android
 	$installURL = $baseURL . urlencode($apkFile);
@@ -36,6 +36,8 @@ else {
     exit();
 }
 
+resolveDeprecatedPlaceholderNames();
 $html = file_get_contents($webTemplate);
-$html = str_replace($installURLPlacehHolder, $installURL, $html);
+$html = str_replace($installURLPlaceholder, $installURL, $html);
+$html = str_replace(OTAGO_VERSION_PLACEHOLDER, OTAGO_VERSION, $html);
 echo $html;

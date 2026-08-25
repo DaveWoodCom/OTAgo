@@ -35,6 +35,8 @@ OTAgo is an OTA app distribution system that allows you and your users to secure
 
 Clone the repo into a folder accessible via HTTPS. You must use HTTPS with a valid (not self-signed) SSL/TLS certificate. (I recommend [Let's Encrypt][letsencrypt]). 
 
+OTAgo sends `X-Content-Type-Options: nosniff` and `Referrer-Policy: no-referrer` on its own responses. It does not send `Strict-Transport-Security` (HSTS): that's a sticky, site-wide browser policy that can lock users out of your whole domain if your certificate ever lapses, so if you want it, set it at the web-server level (nginx/Apache) where you can control its scope and lifetime.
+
 ### Configuration
 
 Copy the file `configuration.default.php` to `configuration.php`. You'll configure the system by editing the copy. You should back this file up as it's excluded from the git repository by default.
@@ -44,11 +46,11 @@ Configuration variables:
 * `$baseURL` -> During an OTA installation, some files need to be referenced by their full URL. OTAgo uses a default value for the baseURL, however it's not likely going to match your actual URL, so you'll want to set this directly.
 * `$authFile` -> filename of a `.php` file to handle the authentication (see below).
 * `$webTemplate` -> the `.html` template to be displayed to the user before they install the app.
-* `$installURLPlacehHolder` -> a placeholder token for the link that will start the app installation.
+* `$installURLPlaceholder` -> a placeholder token for the link that will start the app installation.
 
 * `$enableIOS` -> set to true if you support iOS/iPadOS, then configure the iOS specific variables:
     * `$manifestTemplate` -> the `manifest.plist` template used to install the app.
-    * `$ipaURLPlacehHolder` -> a placeholder token in the above manifest template file where the authenticated URL will be swapped in.
+    * `$ipaURLPlaceholder` -> a placeholder token in the above manifest template file where the authenticated URL will be swapped in.
     * `$ipaFile` -> the `.ipa` file for iOS/iPadOS distribution.
 
 * `$enableAndroid` -> set to true if you support Android, then configure the Android specific variables:
@@ -100,14 +102,14 @@ This method takes no arguments. It must return an associated array with name/val
 	function requestAuthentication()
 ```
 
-This method takes no arguments, and returns no value. It must send whatever is needed to the client to deny access and request authorization. Like the version in the `simpleAuth.php` file, you can call `requestBasicAuthentication()` to trigger a BASIC authentication request.
+This method takes no arguments, and returns no value. It must send whatever is needed to the client to deny access and request authorization. Like the version in the `simpleAuth.php` file, you can call `requestBasicAuthentication()` to trigger a BASIC authentication request. This method must not return: it has to end the request (call `exit`, as `requestBasicAuthentication()` does), otherwise the protected content would be served to an unauthorized visitor. The core OTAgo scripts call `exit()` immediately after `requestAuthentication()` anyway as insurance, so don't remove those calls.
 
 
 ### Templates
 
-The `$webTemplate` file needs to be an HTML file that will be displayed to the user. This can be basic HTML with a single link, or more complicated with details about the app with instructions for the user on how to install it (trusting the Enterprise certificate for example). The template file itself does not need to be in a publicly accessible folder, however any files the page links to, images, stylesheets, etc must be. The `$webTemplate` file should have at least one link with the `href` set to the `$installURLPlacehHolder` (`{{InstallURL}}` in our demo). That link will start the install process when the user taps it.
+The `$webTemplate` file needs to be an HTML file that will be displayed to the user. This can be basic HTML with a single link, or more complicated with details about the app with instructions for the user on how to install it (trusting the Enterprise certificate for example). The template file itself does not need to be in a publicly accessible folder, however any files the page links to, images, stylesheets, etc must be. The `$webTemplate` file should have at least one link with the `href` set to the `$installURLPlaceholder` (`{{InstallURL}}` in our demo). That link will start the install process when the user taps it.
 
-The `$manifestTemplate` file needs to be a valid `manifest.plist` file (see [Apple's documentation](https://support.apple.com/en-ca/guide/deployment-reference-ios/apd11fd167c4/web) for specifics), but instead of specifying the URL for the `.ipa` file, use the `$ipaURLPlacehHolder` placeholder (`{{IPAURL}}` in our demo). The authenticated URL will be substituted into the `.plist` file before it's sent to the user's device.
+The `$manifestTemplate` file needs to be a valid `manifest.plist` file (see [Apple's documentation](https://support.apple.com/en-ca/guide/deployment-reference-ios/apd11fd167c4/web) for specifics), but instead of specifying the URL for the `.ipa` file, use the `$ipaURLPlaceholder` placeholder (`{{IPAURL}}` in our demo). The authenticated URL will be substituted into the `.plist` file before it's sent to the user's device.
 
 ### Contributing
 
@@ -119,6 +121,14 @@ OTAgo can only exist with support from the community. There are many ways you ca
 * Submit pull requests.  
 * Download and install one of my apps: [https://www.cerebralgardens.com/apps/][cerebral-gardens-apps]. Try my newest app: [All the Rings][all-the-rings].  
 * You can visit my [Patreon][patreon-davewoodx] and contribute financially.  
+
+#### Releasing
+
+When cutting a new release, three things need to stay in sync:
+
+1. Bump `OTAGO_VERSION` in `common.php` (it's shown in the web template footer).
+2. Add an entry to `CHANGELOG.md`.
+3. Tag the release with the same version number.
 
 **Note**: when submitting a pull request, please use lots of small commits verses one huge commit. It makes it much easier to merge in when there are several pull requests that need to be combined for a new version.
 

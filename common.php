@@ -4,13 +4,25 @@
 // - https://github.com/DaveWoodCom/OTAgo
 // - Copyright 2020 Dave Wood, Cerebral Gardens Inc.
 
-$includePort = $_SERVER['SERVER_PORT'] != 80 && $_SERVER['SERVER_PORT'] != 443;
-$baseURL = $_SERVER['REQUEST_SCHEME'] . '://' . $_SERVER['HTTP_HOST'] . ($includePort ? ':' . $_SERVER['SERVER_PORT'] : '') . '/';
+// OTAgo's own version. Bump this with each release (see the release steps in README.md).
+define('OTAGO_VERSION', '1.1.0');
+
+// Placeholder token replaced with OTAGO_VERSION when rendering the web template.
+// Not user-configurable, so it lives here rather than in configuration.php.
+define('OTAGO_VERSION_PLACEHOLDER', '{{OTAGOVERSION}}');
+
+// HTTP_HOST already includes the port when it's a non-standard one, so don't append SERVER_PORT.
+$baseURL = $_SERVER['REQUEST_SCHEME'] . '://' . $_SERVER['HTTP_HOST'] . '/';
 
 function preventCaching() {
 	header('Cache-Control: no-cache, no-store, must-revalidate');
 	header('Pragma: no-cache');
 	header('Expires: 0');
+
+	// Basic security headers. Note: Strict-Transport-Security is deliberately not sent here;
+	// HSTS is a sticky, site-wide policy that belongs in your web server's configuration.
+	header('X-Content-Type-Options: nosniff');
+	header('Referrer-Policy: no-referrer');
 }
 
 function requestBasicAuthentication($realm) {
@@ -34,3 +46,18 @@ function makeURLQueryString($parameters, $joinString) {
 	return implode($joinString, $pairs);
 }
 
+// Back-compat for the pre-2.0 "PlacehHolder" typo in configuration.php. If the new name is
+// unset but the old one is, copy it across and emit a deprecation notice. Call this after
+// configuration.php has been loaded. The old names will be dropped in a future release.
+function resolveDeprecatedPlaceholderNames() {
+	$renames = array(
+		'installURLPlacehHolder' => 'installURLPlaceholder',
+		'ipaURLPlacehHolder' => 'ipaURLPlaceholder',
+	);
+	foreach ($renames as $old => $new) {
+		if (!isset($GLOBALS[$new]) && isset($GLOBALS[$old])) {
+			$GLOBALS[$new] = $GLOBALS[$old];
+			trigger_error('$' . $old . ' is deprecated; rename it to $' . $new . ' in configuration.php', E_USER_DEPRECATED);
+		}
+	}
+}
