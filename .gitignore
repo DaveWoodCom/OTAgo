@@ -1,3 +1,14 @@
 *.ipa
 *.apk
 configuration.php
+
+# Simple Auth token storage - the token files and the generated signing secret are
+# credentials. Only the directory guards are tracked.
+tokens/*
+!tokens/index.html
+!tokens/.htaccess
+
+# PHPUnit / Composer (dev only - none of this is deployed)
+/vendor/
+/.phpunit.cache/
+/.phpunit.result.cache

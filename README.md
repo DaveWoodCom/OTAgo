@@ -58,7 +58,7 @@ Configuration variables:
 
 The authentication system used may have additional options, examples are in the `configuration.default.php` file.
 
-The files above do not need to be located in a publicly accessible folder, their contents will be served by the OTAgo scripts.
+The `$ipaFile` and `$apkFile` files above do not need to be located in a publicly accessible folder, their contents are served by the `ipa.php` and `apk.php` scripts, which require authentication first.
 
 ### AuthFile
 
@@ -74,11 +74,15 @@ To disable authentication, set `$authFile = 'auth/none/none.php';` in the `confi
 
 Simple Auth allows you to create a simple list of username/passwords. Add them to the `$users` array in the `configuration.php` file.
 
-There are a two other options you should set:
+There are a few other options you can set:
 
-`$simpleAuthTempDirectory`: a temporary directory where the authentication system can store access tokens (the web server needs write permission). Our example configuration uses `/tmp`, but it would be more secure to use a folder that is inaccessible to other users on the system.  
+`$simpleAuthTempDirectory`: the directory where the authentication system stores access tokens (the web server needs read and write permission). It defaults to the `tokens` directory that ships with OTAgo, which is created on first use with `0700` permissions and guarded by an `index.html` and an `.htaccess` so the web server won't serve it. Token files are written `0600`.
 
-`$simpleAuthTokenLifetime`: the number of seconds a token should be valid. By default we set it to 3600 seconds (1 hour), which should be fine for most cases.  
+Token files **are** credentials - the `?u=` / `?t=` pair in the install URLs is what authenticates the iOS installer, which can't send an `Authorization` header of its own. Don't point this at a shared directory such as `/tmp`: on a multi-user host, every local user can read the token filenames and reconstruct a working install URL, and can write token files of their own. If you do move it, pick a directory outside the web root that only the web server user can access.
+
+`$simpleAuthSecret`: a long random string used to sign token files, so a token can't be repurposed for another user and a file dropped into the token directory by someone else won't be accepted. Leave it unset and OTAgo generates one on first use and stores it (`0600`) in the token directory; set it explicitly if you run several web servers off shared storage. Changing it invalidates every outstanding token.
+
+`$simpleAuthTokenLifetime`: the number of seconds a token should be valid. By default we set it to 3600 seconds (1 hour), which should be fine for most cases. The age is checked every time a token is used, and expired token files are deleted on sight.  
 
 ##### Custom Authentication
 
@@ -121,6 +125,17 @@ OTAgo can only exist with support from the community. There are many ways you ca
 * Submit pull requests.  
 * Download and install one of my apps: [https://www.cerebralgardens.com/apps/][cerebral-gardens-apps]. Try my newest app: [All the Rings][all-the-rings].  
 * You can visit my [Patreon][patreon-davewoodx] and contribute financially.  
+
+#### Tests
+
+OTAgo has a PHPUnit suite covering the Simple Auth provider and the `$baseURL` detection in `common.php`. The test tooling needs PHP 8.1+ and [Composer][composer]; the OTAgo scripts themselves have no runtime dependencies, and nothing in `vendor/` needs to be deployed to your web server.
+
+```sh
+composer install
+composer test
+```
+
+The tests drive the real globals the scripts use, in a throwaway token directory under the system temp directory - they never touch a deployed configuration. `tests/BaseURLTest.php` also pins the setups where base URL detection *can't* get it right (a TLS-terminating proxy, or an nginx configuration that doesn't pass `REQUEST_SCHEME`), which are the cases where you need to set `$baseURL` yourself in `configuration.php`.
 
 #### Releasing
 
@@ -165,5 +180,6 @@ My thanks to [Freepik](https://www.flaticon.com/authors/freepik) at [flaticon.co
 
 [github-otago]: https://github.com/DaveWoodCom/OTAgo
 [nginx]: https://nginx.org/
+[composer]: https://getcomposer.org
 [apache]: https://httpd.apache.org/
 [letsencrypt]: https://letsencrypt.org/

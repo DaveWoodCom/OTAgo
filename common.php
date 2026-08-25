@@ -11,8 +11,15 @@ define('OTAGO_VERSION', '1.1.0');
 // Not user-configurable, so it lives here rather than in configuration.php.
 define('OTAGO_VERSION_PLACEHOLDER', '{{OTAGOVERSION}}');
 
+// Builds the base URL OTAgo links back to itself with, from a $_SERVER-shaped array.
 // HTTP_HOST already includes the port when it's a non-standard one, so don't append SERVER_PORT.
-$baseURL = $_SERVER['REQUEST_SCHEME'] . '://' . $_SERVER['HTTP_HOST'] . '/';
+// Override $baseURL in configuration.php if what this detects isn't right for your setup
+// (see the tests in tests/BaseURLTest.php for the cases it does and doesn't handle).
+function detectBaseURL($server) {
+	return $server['REQUEST_SCHEME'] . '://' . $server['HTTP_HOST'] . '/';
+}
+
+$baseURL = detectBaseURL($_SERVER);
 
 function preventCaching() {
 	header('Cache-Control: no-cache, no-store, must-revalidate');
