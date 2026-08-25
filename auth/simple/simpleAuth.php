@@ -24,11 +24,28 @@ function isValidUser() {
 		return false;
 	}
 
-	if ($users[$username] == $password) {
+	if (!isset($users[$username])) {
+		// Unknown user. Bail out before any comparison: a missing entry evaluates to NULL,
+		// and NULL == NULL (no Authorization header) or NULL == '' (empty password) used to
+		// authenticate anybody who guessed at the query string.
+		return false;
+	}
+
+	$expectedPassword = $users[$username];
+
+	// Both sides must be real strings before we compare. $password is only set when
+	// PHP_AUTH_PW is present, so it is NULL on an unauthenticated request. hash_equals()
+	// is a byte-exact, timing-safe comparison, which also avoids the numeric-string
+	// coercion '==' would apply (e.g. '1e3' == '1000').
+	if (is_string($password) && is_scalar($expectedPassword) && hash_equals((string)$expectedPassword, $password)) {
+		// Only a successful password authentication mints/refreshes a token.
 		touch(userTokenFilename());
 		return true;
 	}
-	else if (file_exists(userTokenFilename())) {
+	
+	// Otherwise fall back to a token issued by an earlier successful password auth.
+	// cleanTempDir() has already removed expired tokens.
+	if (file_exists(userTokenFilename())) {
 		return true;
 	}
 	
