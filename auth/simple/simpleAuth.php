@@ -70,10 +70,12 @@ function queryStringAuthParameters() {
 }
 
 // You must include a function with this signature.
-// Send a response to trigger an authentication request, then exit.
-function requestAuthentication() {
+// Send a response to trigger an authentication request, then exit. The `never` return type
+// makes PHP enforce that: if this function ever returned, PHP would throw a TypeError rather
+// than let the caller fall through and serve the protected content.
+function requestAuthentication(): never {
 	requestBasicAuthentication('Authentication Required');
-    exit;
+	exit;
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////

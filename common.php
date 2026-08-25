@@ -4,6 +4,15 @@
 // - https://github.com/DaveWoodCom/OTAgo
 // - Copyright 2020 Dave Wood, Cerebral Gardens Inc.
 
+// OTAgo requires PHP 8.1 or newer (PHP 7 reached end of life in November 2022). This file
+// deliberately avoids PHP 8-only syntax so that an older interpreter gets this clear message
+// instead of a parse error from one of the files loaded after it.
+if (PHP_VERSION_ID < 80100) {
+	http_response_code(500);
+	header('Content-Type: text/plain');
+	exit('OTAgo requires PHP 8.1 or newer; this server is running PHP ' . PHP_VERSION . '.');
+}
+
 // OTAgo's own version. Bump this with each release (see the release steps in README.md).
 define('OTAGO_VERSION', '1.1.0');
 
