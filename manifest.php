@@ -25,9 +25,10 @@ if (!$enableIOS) {
     exit();
 }
 
+resolveDeprecatedPlaceholderNames();
 $manifest = file_get_contents($manifestTemplate);
 
 $ipaURL = $baseURL . 'ipa.php?' . makeURLQueryString(queryStringAuthParameters(), '&amp;');
-$manifest = str_replace($ipaURLPlacehHolder, $ipaURL, $manifest);
+$manifest = str_replace($ipaURLPlaceholder, $ipaURL, $manifest);
 
 echo $manifest;
