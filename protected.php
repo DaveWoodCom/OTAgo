@@ -20,7 +20,7 @@ if (!isValidUser()) {
     exit();
 }
 
-$userAgent = strtolower($_SERVER['HTTP_USER_AGENT']);
+$userAgent = $_SERVER['HTTP_USER_AGENT'] ?? '';
 if ($enableAndroid && stripos($userAgent, 'android') !== false) {
 	// Android
 	$installURL = $baseURL . urlencode($apkFile);
