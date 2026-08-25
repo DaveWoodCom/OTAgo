@@ -4,6 +4,13 @@
 // - https://github.com/DaveWoodCom/OTAgo
 // - Copyright 2020 Dave Wood, Cerebral Gardens Inc.
 
+// OTAgo's own version. Bump this with each release (see the release steps in README.md).
+define('OTAGO_VERSION', '1.1.0');
+
+// Placeholder token replaced with OTAGO_VERSION when rendering the web template.
+// Not user-configurable, so it lives here rather than in configuration.php.
+define('OTAGO_VERSION_PLACEHOLDER', '{{OTAGOVERSION}}');
+
 // HTTP_HOST already includes the port when it's a non-standard one, so don't append SERVER_PORT.
 $baseURL = $_SERVER['REQUEST_SCHEME'] . '://' . $_SERVER['HTTP_HOST'] . '/';
 

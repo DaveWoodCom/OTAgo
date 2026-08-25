@@ -251,6 +251,15 @@ span.pageFooterText a:active {
 	text-decoration: none;
 }
 
+span.footerVersion {
+	font-family: 'Helvetica Neue Thin', sans-serif;
+	font-size: 11pt;
+	font-weight: 300;
+	color: #9a9c9e;
+	float: left;
+	padding: 0px 20px 0px 0px;
+}
+
 span.footerCopyright {
 	font-family: 'Helvetica Neue Thin', sans-serif;
 	font-size: 16pt;
