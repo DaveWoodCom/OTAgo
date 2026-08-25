@@ -74,11 +74,15 @@ To disable authentication, set `$authFile = 'auth/none/none.php';` in the `confi
 
 Simple Auth allows you to create a simple list of username/passwords. Add them to the `$users` array in the `configuration.php` file.
 
-There are a two other options you should set:
+There are a few other options you can set:
 
-`$simpleAuthTempDirectory`: a temporary directory where the authentication system can store access tokens (the web server needs write permission). Our example configuration uses `/tmp`, but it would be more secure to use a folder that is inaccessible to other users on the system.  
+`$simpleAuthTempDirectory`: the directory where the authentication system stores access tokens (the web server needs read and write permission). It defaults to the `tokens` directory that ships with OTAgo, which is created on first use with `0700` permissions and guarded by an `index.html` and an `.htaccess` so the web server won't serve it. Token files are written `0600`.
 
-`$simpleAuthTokenLifetime`: the number of seconds a token should be valid. By default we set it to 3600 seconds (1 hour), which should be fine for most cases.  
+Token files **are** credentials - the `?u=` / `?t=` pair in the install URLs is what authenticates the iOS installer, which can't send an `Authorization` header of its own. Don't point this at a shared directory such as `/tmp`: on a multi-user host, every local user can read the token filenames and reconstruct a working install URL, and can write token files of their own. If you do move it, pick a directory outside the web root that only the web server user can access.
+
+`$simpleAuthSecret`: a long random string used to sign token files, so a token can't be repurposed for another user and a file dropped into the token directory by someone else won't be accepted. Leave it unset and OTAgo generates one on first use and stores it (`0600`) in the token directory; set it explicitly if you run several web servers off shared storage. Changing it invalidates every outstanding token.
+
+`$simpleAuthTokenLifetime`: the number of seconds a token should be valid. By default we set it to 3600 seconds (1 hour), which should be fine for most cases. The age is checked every time a token is used, and expired token files are deleted on sight.  
 
 ##### Custom Authentication
 
