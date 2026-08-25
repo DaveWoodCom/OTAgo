@@ -101,7 +101,11 @@ function initalizeRequest() {
 		$password = $_SERVER['PHP_AUTH_PW'];
 	}
 
-	if (isset($_GET['t'])) {
+	// Defence in depth: $requestUUID is interpolated into a filesystem path by
+	// userTokenFilename(), so only accept a well-formed UUID. Anything else is
+	// treated as absent, and a fresh UUID is generated below (which simply fails
+	// to match an existing token file, so authentication fails naturally).
+	if (isset($_GET['t']) && preg_match('/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i', $_GET['t'])) {
 		$requestUUID = $_GET['t'];
 	}
 	if (empty($requestUUID)) {
