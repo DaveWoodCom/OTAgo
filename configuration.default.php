@@ -15,7 +15,13 @@
 
 // Authentication - Simple Auth
 $authFile = 'auth/simple/simpleAuth.php';
-$simpleAuthTempDirectory = '/tmp';
+// Where Simple Auth stores its token files. Defaults to the `tokens` directory that ships
+// with OTAgo, which is guarded by an index.html and an .htaccess. Only override this with a
+// directory that other users on the host can't read or write - never a shared /tmp.
+// $simpleAuthTempDirectory = '/var/lib/otago/tokens';
+// Secret used to sign token files. Leave it unset and OTAgo generates one (0600) inside the
+// token directory; set it explicitly if you run several servers off shared storage.
+// $simpleAuthSecret = 'put-a-long-random-string-here';
 $simpleAuthTokenLifetime = 3600; // 1 hour (3600 seconds)
 $users = array(
 	'dave' => 'secr3t',
