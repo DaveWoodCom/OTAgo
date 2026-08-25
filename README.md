@@ -122,6 +122,14 @@ OTAgo can only exist with support from the community. There are many ways you ca
 * Download and install one of my apps: [https://www.cerebralgardens.com/apps/][cerebral-gardens-apps]. Try my newest app: [All the Rings][all-the-rings].  
 * You can visit my [Patreon][patreon-davewoodx] and contribute financially.  
 
+#### Releasing
+
+When cutting a new release, three things need to stay in sync:
+
+1. Bump `OTAGO_VERSION` in `common.php` (it's shown in the web template footer).
+2. Add an entry to `CHANGELOG.md`.
+3. Tag the release with the same version number.
+
 **Note**: when submitting a pull request, please use lots of small commits verses one huge commit. It makes it much easier to merge in when there are several pull requests that need to be combined for a new version.
 
 ## Why's the project called OTAgo, and why is a koala involved?

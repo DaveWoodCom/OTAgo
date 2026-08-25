@@ -38,4 +38,5 @@ else {
 
 $html = file_get_contents($webTemplate);
 $html = str_replace($installURLPlacehHolder, $installURL, $html);
+$html = str_replace(OTAGO_VERSION_PLACEHOLDER, OTAGO_VERSION, $html);
 echo $html;
