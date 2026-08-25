@@ -58,7 +58,7 @@ Configuration variables:
 
 The authentication system used may have additional options, examples are in the `configuration.default.php` file.
 
-The files above do not need to be located in a publicly accessible folder, their contents will be served by the OTAgo scripts.
+The `$ipaFile` and `$apkFile` files above do not need to be located in a publicly accessible folder, their contents are served by the `ipa.php` and `apk.php` scripts, which require authentication first.
 
 ### AuthFile
 

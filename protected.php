@@ -23,7 +23,8 @@ if (!isValidUser()) {
 $userAgent = $_SERVER['HTTP_USER_AGENT'] ?? '';
 if ($enableAndroid && stripos($userAgent, 'android') !== false) {
 	// Android
-	$installURL = $baseURL . urlencode($apkFile);
+	// Entity-encoded separators: this URL is substituted into an HTML href.
+	$installURL = $baseURL . 'apk.php?' . makeURLQueryString(queryStringAuthParameters(), '&amp;');
 }
 elseif ($enableIOS) {
     // Sadly we can't detect iOS/iPadOS via the User-Agent, so for now, just assuming iOS
