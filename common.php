@@ -46,3 +46,18 @@ function makeURLQueryString($parameters, $joinString) {
 	return implode($joinString, $pairs);
 }
 
+// Back-compat for the pre-2.0 "PlacehHolder" typo in configuration.php. If the new name is
+// unset but the old one is, copy it across and emit a deprecation notice. Call this after
+// configuration.php has been loaded. The old names will be dropped in a future release.
+function resolveDeprecatedPlaceholderNames() {
+	$renames = array(
+		'installURLPlacehHolder' => 'installURLPlaceholder',
+		'ipaURLPlacehHolder' => 'ipaURLPlaceholder',
+	);
+	foreach ($renames as $old => $new) {
+		if (!isset($GLOBALS[$new]) && isset($GLOBALS[$old])) {
+			$GLOBALS[$new] = $GLOBALS[$old];
+			trigger_error('$' . $old . ' is deprecated; rename it to $' . $new . ' in configuration.php', E_USER_DEPRECATED);
+		}
+	}
+}

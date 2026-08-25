@@ -36,7 +36,8 @@ else {
     exit();
 }
 
+resolveDeprecatedPlaceholderNames();
 $html = file_get_contents($webTemplate);
-$html = str_replace($installURLPlacehHolder, $installURL, $html);
+$html = str_replace($installURLPlaceholder, $installURL, $html);
 $html = str_replace(OTAGO_VERSION_PLACEHOLDER, OTAGO_VERSION, $html);
 echo $html;
