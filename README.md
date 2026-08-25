@@ -126,6 +126,17 @@ OTAgo can only exist with support from the community. There are many ways you ca
 * Download and install one of my apps: [https://www.cerebralgardens.com/apps/][cerebral-gardens-apps]. Try my newest app: [All the Rings][all-the-rings].  
 * You can visit my [Patreon][patreon-davewoodx] and contribute financially.  
 
+#### Tests
+
+OTAgo has a PHPUnit suite covering the Simple Auth provider and the `$baseURL` detection in `common.php`. The test tooling needs PHP 8.1+ and [Composer][composer]; the OTAgo scripts themselves have no runtime dependencies, and nothing in `vendor/` needs to be deployed to your web server.
+
+```sh
+composer install
+composer test
+```
+
+The tests drive the real globals the scripts use, in a throwaway token directory under the system temp directory - they never touch a deployed configuration. `tests/BaseURLTest.php` also pins the setups where base URL detection *can't* get it right (a TLS-terminating proxy, or an nginx configuration that doesn't pass `REQUEST_SCHEME`), which are the cases where you need to set `$baseURL` yourself in `configuration.php`.
+
 #### Releasing
 
 When cutting a new release, three things need to stay in sync:
@@ -169,5 +180,6 @@ My thanks to [Freepik](https://www.flaticon.com/authors/freepik) at [flaticon.co
 
 [github-otago]: https://github.com/DaveWoodCom/OTAgo
 [nginx]: https://nginx.org/
+[composer]: https://getcomposer.org
 [apache]: https://httpd.apache.org/
 [letsencrypt]: https://letsencrypt.org/
