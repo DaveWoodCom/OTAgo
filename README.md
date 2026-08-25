@@ -102,7 +102,7 @@ This method takes no arguments. It must return an associated array with name/val
 	function requestAuthentication()
 ```
 
-This method takes no arguments, and returns no value. It must send whatever is needed to the client to deny access and request authorization. Like the version in the `simpleAuth.php` file, you can call `requestBasicAuthentication()` to trigger a BASIC authentication request.
+This method takes no arguments, and returns no value. It must send whatever is needed to the client to deny access and request authorization. Like the version in the `simpleAuth.php` file, you can call `requestBasicAuthentication()` to trigger a BASIC authentication request. This method must not return: it has to end the request (call `exit`, as `requestBasicAuthentication()` does), otherwise the protected content would be served to an unauthorized visitor. The core OTAgo scripts call `exit()` immediately after `requestAuthentication()` anyway as insurance, so don't remove those calls.
 
 
 ### Templates
