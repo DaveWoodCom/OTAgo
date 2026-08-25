@@ -4,8 +4,8 @@
 // - https://github.com/DaveWoodCom/OTAgo
 // - Copyright 2020 Dave Wood, Cerebral Gardens Inc.
 
-$includePort = $_SERVER['SERVER_PORT'] != 80 && $_SERVER['SERVER_PORT'] != 443;
-$baseURL = $_SERVER['REQUEST_SCHEME'] . '://' . $_SERVER['HTTP_HOST'] . ($includePort ? ':' . $_SERVER['SERVER_PORT'] : '') . '/';
+// HTTP_HOST already includes the port when it's a non-standard one, so don't append SERVER_PORT.
+$baseURL = $_SERVER['REQUEST_SCHEME'] . '://' . $_SERVER['HTTP_HOST'] . '/';
 
 function preventCaching() {
 	header('Cache-Control: no-cache, no-store, must-revalidate');
