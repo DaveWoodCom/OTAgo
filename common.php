@@ -11,6 +11,11 @@ function preventCaching() {
 	header('Cache-Control: no-cache, no-store, must-revalidate');
 	header('Pragma: no-cache');
 	header('Expires: 0');
+
+	// Basic security headers. Note: Strict-Transport-Security is deliberately not sent here;
+	// HSTS is a sticky, site-wide policy that belongs in your web server's configuration.
+	header('X-Content-Type-Options: nosniff');
+	header('Referrer-Policy: no-referrer');
 }
 
 function requestBasicAuthentication($realm) {

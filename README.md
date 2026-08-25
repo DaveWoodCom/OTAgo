@@ -35,6 +35,8 @@ OTAgo is an OTA app distribution system that allows you and your users to secure
 
 Clone the repo into a folder accessible via HTTPS. You must use HTTPS with a valid (not self-signed) SSL/TLS certificate. (I recommend [Let's Encrypt][letsencrypt]). 
 
+OTAgo sends `X-Content-Type-Options: nosniff` and `Referrer-Policy: no-referrer` on its own responses. It does not send `Strict-Transport-Security` (HSTS): that's a sticky, site-wide browser policy that can lock users out of your whole domain if your certificate ever lapses, so if you want it, set it at the web-server level (nginx/Apache) where you can control its scope and lifetime.
+
 ### Configuration
 
 Copy the file `configuration.default.php` to `configuration.php`. You'll configure the system by editing the copy. You should back this file up as it's excluded from the git repository by default.
