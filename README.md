@@ -77,6 +77,14 @@ To disable authentication, set `$authFile = 'auth/none/none.php';` in the `confi
 
 Simple Auth allows you to create a simple list of username/passwords. Add them to the `$users` array in the `configuration.php` file.
 
+Store passwords as `password_hash()` digests rather than plaintext, so that someone who can read `configuration.php` can't reuse the passwords elsewhere. Generate a digest with:
+
+```sh
+php -r 'echo password_hash("your-password", PASSWORD_DEFAULT), PHP_EOL;'
+```
+
+and paste the result (it starts with `$2y$` or `$argon2`) as the user's value. Plaintext values are still accepted for backwards compatibility - OTAgo tells the two apart automatically - but treat that as a migration step, not a destination. Comparison is timing-safe either way.
+
 There are a few other options you can set:
 
 `$simpleAuthTempDirectory`: the directory where the authentication system stores access tokens (the web server needs read and write permission). It defaults to the `tokens` directory that ships with OTAgo, which is created on first use with `0700` permissions and guarded by an `index.html` and an `.htaccess` so the web server won't serve it. Token files are written `0600`.

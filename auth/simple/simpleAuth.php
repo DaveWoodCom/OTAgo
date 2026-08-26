@@ -49,11 +49,9 @@ function isValidUser() {
 
 	$expectedPassword = $users[$username];
 
-	// Both sides must be real strings before we compare. $password is only set when
-	// PHP_AUTH_PW is present, so it is NULL on an unauthenticated request. hash_equals()
-	// is a byte-exact, timing-safe comparison, which also avoids the numeric-string
-	// coercion '==' would apply (e.g. '1e3' == '1000').
-	if (is_string($password) && is_scalar($expectedPassword) && hash_equals((string)$expectedPassword, $password)) {
+	// $password is only set when the request carried credentials, so it is NULL on an
+	// unauthenticated request; require a real string before comparing anything.
+	if (is_string($password) && is_scalar($expectedPassword) && passwordMatches($password, (string)$expectedPassword)) {
 		// #15: housekeeping runs here, on a successful password authentication, rather than on
 		// every include. Password auths are rare (once per browser session); manifest.php /
 		// ipa.php / apk.php requests carrying only ?u=&t= are the common case and no longer pay
@@ -183,6 +181,32 @@ function initalizeRequest() {
 	if (empty($requestUUID)) {
 		$requestUUID = randomUUID();
 	}
+}
+
+// Compares a submitted password against the configured value for the user. The configured
+// value may be either a password_hash() digest (recommended - generate one with
+// `php -r 'echo password_hash("your-password", PASSWORD_DEFAULT), PHP_EOL;'`) or, for
+// backwards compatibility, the plaintext password. Both paths are timing-safe:
+// password_verify() by design, and hash_equals() for plaintext, which also avoids the
+// numeric-string coercion '==' would apply (e.g. '1e3' == '1000').
+function passwordMatches($submitted, $configured) {
+	if (isPasswordHash($configured)) {
+		return password_verify($submitted, $configured);
+	}
+
+	return hash_equals($configured, $submitted);
+}
+
+// True when the configured value is a digest produced by password_hash() (bcrypt "$2y$",
+// argon2i "$argon2i$" or argon2id "$argon2id$"). Anything else is treated as plaintext, so a
+// password that merely happens to start with '$' still works as it always did.
+function isPasswordHash($value) {
+	if (!is_string($value)) {
+		return false;
+	}
+
+	$info = password_get_info($value);
+	return isset($info['algo']) && $info['algo'] !== null && $info['algo'] !== 0;
 }
 
 // Decodes an HTTP Basic "Authorization" header value into array($username, $password).
