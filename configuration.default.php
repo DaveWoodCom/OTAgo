@@ -29,9 +29,13 @@ $authFile = 'auth/simple/simpleAuth.php';
 // token directory; set it explicitly if you run several servers off shared storage.
 // $simpleAuthSecret = 'put-a-long-random-string-here';
 $simpleAuthTokenLifetime = 3600; // 1 hour (3600 seconds)
+// Passwords can be stored as password_hash() digests (recommended) or as plaintext. Generate
+// a digest with:
+//   php -r 'echo password_hash("your-password", PASSWORD_DEFAULT), PHP_EOL;'
+// Digests start with "$2y$" (bcrypt) or "$argon2"; anything else is treated as plaintext.
 $users = array(
-	'dave' => 'secr3t',
-	'john' => 'hunter2'
+	'dave' => '$2y$12$bO3l.SZkEHK47yAAhTGiueJTwBrxeIguzsgI2BNilhSDDxTBRLBSK', // "secr3t"
+	'john' => 'hunter2'  // plaintext still works, but prefer a hash
 );
 
 // Templates
