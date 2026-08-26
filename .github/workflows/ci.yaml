@@ -36,6 +36,9 @@ jobs:
           REPO_URL: ${{ github.server_url }}/${{ github.repository }}.git
           TOKEN: ${{ github.token }}
         run: |
+          # On GitHub the workspace is created by the runner user while this container runs as
+          # root, so git refuses it as "dubious ownership" unless it is marked safe first.
+          git config --global --add safe.directory "$GITHUB_WORKSPACE"
           git init -q .
           git remote add origin "$REPO_URL"
           git -c http.extraheader="AUTHORIZATION: basic $(printf 'x-access-token:%s' "$TOKEN" | base64 -w0)" \
