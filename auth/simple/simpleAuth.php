@@ -35,6 +35,15 @@ function isValidUser() {
 		// would keep authenticating with an already-issued ?u=&t= link until the token aged
 		// out (an hour by default). Requiring the username to still be in $users makes the
 		// deletion take effect on the very next request. Don't move this check down.
+		//
+		// #32: if the request also carried a token for this now-unknown user, drop the file so
+		// it doesn't sit in the token directory until it ages out. The filename is fully
+		// determined by username + UUID, so this can't touch anyone else's token; when the
+		// UUID was generated for this request there is simply no such file.
+		$staleToken = userTokenFilename();
+		if (is_file($staleToken)) {
+			@unlink($staleToken);
+		}
 		return false;
 	}
 
@@ -149,6 +158,21 @@ function initalizeRequest() {
 		$password = $_SERVER['PHP_AUTH_PW'];
 	}
 
+	// Under php-fpm/CGI, PHP only fills PHP_AUTH_USER / PHP_AUTH_PW when the web server hands
+	// it the Authorization header directly. The Apache SetEnvIf / RewriteRule recipes in the
+	// README (and some nginx setups) land it in HTTP_AUTHORIZATION or REDIRECT_HTTP_AUTHORIZATION
+	// instead, so decode that ourselves rather than prompting forever.
+	if (!isset($_SERVER['PHP_AUTH_USER'])) {
+		$header = $_SERVER['HTTP_AUTHORIZATION'] ?? $_SERVER['REDIRECT_HTTP_AUTHORIZATION'] ?? '';
+		$credentials = basicAuthCredentialsFromHeader($header);
+		if ($credentials !== null) {
+			if (empty($username)) {
+				$username = $credentials[0];
+			}
+			$password = $credentials[1];
+		}
+	}
+
 	// Defence in depth: $requestUUID is interpolated into a filesystem path by
 	// userTokenFilename(), so only accept a well-formed UUID. Anything else is
 	// treated as absent, and a fresh UUID is generated below (which simply fails
@@ -159,6 +183,27 @@ function initalizeRequest() {
 	if (empty($requestUUID)) {
 		$requestUUID = randomUUID();
 	}
+}
+
+// Decodes an HTTP Basic "Authorization" header value into array($username, $password).
+// Returns null for anything that isn't a well-formed Basic header: a different scheme, bad
+// base64, or no ':' separator. The password may be empty; the username may not.
+function basicAuthCredentialsFromHeader($header) {
+	if (!is_string($header) || !preg_match('/^\s*Basic\s+([A-Za-z0-9+\/=]+)\s*$/i', $header, $matches)) {
+		return null;
+	}
+
+	$decoded = base64_decode($matches[1], true);
+	if ($decoded === false || strpos($decoded, ':') === false) {
+		return null;
+	}
+
+	list($username, $password) = explode(':', $decoded, 2);
+	if ($username === '') {
+		return null;
+	}
+
+	return array($username, $password);
 }
 
 // The returned UUID *is* the credential: it becomes the ?t= value and the token filename.
@@ -363,6 +408,7 @@ function simpleAuthGlobEscape($literal) {
 // include: the token-only requests from the iOS installer are the hot path and shouldn't pay
 // for a directory scan.
 function cleanTempDir() {
+	global $users;
 	global $simpleAuthTempDirectory;
 	global $simpleAuthTokenPrefix;
 	global $simpleAuthTokenExtension;
@@ -398,6 +444,16 @@ function cleanTempDir() {
 			continue;
 		}
 
+		// #32: a token whose owner has been removed from $users is refused on sight by
+		// isValidUser(), so the file is dead weight however fresh it is. Delete it now rather
+		// than waiting for it to age out. A filename whose username part doesn't decode is
+		// treated the same way - it can't belong to anyone.
+		$owner = simpleAuthTokenOwner($filename);
+		if ($owner === null || !is_array($users) || !isset($users[$owner])) {
+			@unlink($fullFilePath);
+			continue;
+		}
+
 		$modifiedTime = @filemtime($fullFilePath);
 		if ($modifiedTime === false) {
 			continue;
@@ -409,6 +465,26 @@ function cleanTempDir() {
 
 		@unlink($fullFilePath);
 	}
+}
+
+// Recovers the username a token filename was issued for (the inverse of userTokenFilename()),
+// or null if the name doesn't have the expected <prefix>_<url-safe base64>_<uuid>.<ext> shape.
+function simpleAuthTokenOwner($filename) {
+	global $simpleAuthTokenPrefix;
+	global $simpleAuthTokenExtension;
+
+	$pattern = '/^' . preg_quote($simpleAuthTokenPrefix, '/') . '_([A-Za-z0-9_-]*)_[0-9a-f-]{36}\.' . preg_quote($simpleAuthTokenExtension, '/') . '$/i';
+	if (!preg_match($pattern, $filename, $matches)) {
+		return null;
+	}
+
+	$encoded = strtr($matches[1], '-_', '+/');
+	$decoded = base64_decode($encoded . str_repeat('=', (4 - strlen($encoded) % 4) % 4), true);
+	if ($decoded === false || $decoded === '') {
+		return null;
+	}
+
+	return $decoded;
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////
