@@ -4,8 +4,14 @@
 // - https://github.com/DaveWoodCom/OTAgo
 // - Copyright 2020 Dave Wood, Cerebral Gardens Inc.
 
-// Can override the baseURL if the detected one in common.php isn't correct.
+// OTAgo works out the URL it's served from (scheme + host) from the request. Override it here
+// if what it detects isn't correct, e.g. when the public URL differs from what PHP sees.
 // $baseURL = 'https://example.com/app/';
+
+// Only set this to true if OTAgo sits behind a reverse proxy / load balancer that terminates
+// TLS and sets X-Forwarded-Proto (and optionally X-Forwarded-Host) on every request. With it
+// enabled those headers are trusted for the base URL; without a proxy they'd be spoofable.
+$trustProxyHeaders = false;
 
 // Choose one authentication method
 // Current options: None, or Simple Auth

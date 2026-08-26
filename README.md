@@ -26,7 +26,7 @@ OTAgo is an OTA app distribution system that allows you and your users to secure
 ## Requirements
 
 * HTTPS enabled web server ([nginx][nginx] or [Apache][apache] recommended)
-* PHP 7.x
+* PHP 8.1 or newer
 * binary files to distribute (at least one of):
     * .ipa file (signed with an ad-hoc or enterprise distribution profile)
     * .apk file (fat file, not an app bundle, or an apk split per abi)
@@ -43,7 +43,8 @@ Copy the file `configuration.default.php` to `configuration.php`. You'll configu
 
 Configuration variables:
 
-* `$baseURL` -> During an OTA installation, some files need to be referenced by their full URL. OTAgo uses a default value for the baseURL, however it's not likely going to match your actual URL, so you'll want to set this directly.
+* `$baseURL` -> During an OTA installation, some files need to be referenced by their full URL. OTAgo detects the scheme and host from the request (Apache, nginx/php-fpm and PHP's built-in server all work); set this directly if the detected value isn't right, for example when the public URL differs from the one PHP sees.
+* `$trustProxyHeaders` -> set to `true` only when OTAgo is behind a TLS-terminating reverse proxy or load balancer that sets `X-Forwarded-Proto` (and optionally `X-Forwarded-Host`) on every request. Those headers are then used for `$baseURL`. Leave it `false` otherwise: without a proxy in front, a client could set them itself.
 * `$authFile` -> filename of a `.php` file to handle the authentication (see below).
 * `$webTemplate` -> the `.html` template to be displayed to the user before they install the app.
 * `$installURLPlaceholder` -> a placeholder token for the link that will start the app installation.
@@ -103,10 +104,10 @@ This takes no parameters and must determine if the current user is valid or not.
 This method takes no arguments. It must return an associated array with name/value pairs to be appended to OTAgo URLs. This is how OTAgo will pass the authentication through to the manifest and ipa URLs.
 
 ```php
-	function requestAuthentication()
+	function requestAuthentication(): never
 ```
 
-This method takes no arguments, and returns no value. It must send whatever is needed to the client to deny access and request authorization. Like the version in the `simpleAuth.php` file, you can call `requestBasicAuthentication()` to trigger a BASIC authentication request. This method must not return: it has to end the request (call `exit`, as `requestBasicAuthentication()` does), otherwise the protected content would be served to an unauthorized visitor. The core OTAgo scripts call `exit()` immediately after `requestAuthentication()` anyway as insurance, so don't remove those calls.
+This method takes no arguments, and never returns. It must send whatever is needed to the client to deny access and request authorization. Like the version in the `simpleAuth.php` file, you can call `requestBasicAuthentication()` to trigger a BASIC authentication request. This method must not return: it has to end the request (call `exit`, as `requestBasicAuthentication()` does), otherwise the protected content would be served to an unauthorized visitor. Declare it with the `never` return type, as the bundled providers do, so PHP enforces that for you. The core OTAgo scripts call `exit()` immediately after `requestAuthentication()` anyway as insurance, so don't remove those calls.
 
 
 ### Templates
@@ -128,14 +129,14 @@ OTAgo can only exist with support from the community. There are many ways you ca
 
 #### Tests
 
-OTAgo has a PHPUnit suite covering the Simple Auth provider and the `$baseURL` detection in `common.php`. The test tooling needs PHP 8.1+ and [Composer][composer]; the OTAgo scripts themselves have no runtime dependencies, and nothing in `vendor/` needs to be deployed to your web server.
+OTAgo has a PHPUnit suite covering the Simple Auth provider and the `$baseURL` detection in `common.php`. Running them needs [Composer][composer]; the OTAgo scripts themselves have no runtime dependencies beyond PHP 8.1+, and nothing in `vendor/` needs to be deployed to your web server.
 
 ```sh
 composer install
 composer test
 ```
 
-The tests drive the real globals the scripts use, in a throwaway token directory under the system temp directory - they never touch a deployed configuration. `tests/BaseURLTest.php` also pins the setups where base URL detection *can't* get it right (a TLS-terminating proxy, or an nginx configuration that doesn't pass `REQUEST_SCHEME`), which are the cases where you need to set `$baseURL` yourself in `configuration.php`.
+The tests drive the real globals the scripts use, in a throwaway token directory under the system temp directory - they never touch a deployed configuration. `tests/BaseURLTest.php` covers base URL detection across Apache, nginx/php-fpm (with and without `REQUEST_SCHEME`), non-standard ports, and proxied deployments with `$trustProxyHeaders` on and off.
 
 #### Releasing
 
@@ -170,7 +171,7 @@ My thanks to [Freepik](https://www.flaticon.com/authors/freepik) at [flaticon.co
 [all-the-rings]: https://alltherings.fit/?s=GH4
 [patreon-davewoodx]: https://www.patreon.com/DaveWoodX
 
-[badge-language]: https://img.shields.io/badge/PHP-7.x-blue.svg?style=flat
+[badge-language]: https://img.shields.io/badge/PHP-8.1%2B-blue.svg?style=flat
 [badge-license]: https://img.shields.io/badge/License-BSD%203--Clause-blue.svg?style=flat
 
 [badge-sponsors]: https://img.shields.io/badge/Sponsors-Cerebral%20Gardens-orange.svg?style=flat

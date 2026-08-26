@@ -8,8 +8,7 @@ use PHPUnit\Framework\TestCase;
 
 // Covers detectBaseURL() in common.php - the value every install/manifest/IPA URL is built
 // from. These tests pin the current behaviour across the server setups OTAgo gets deployed
-// on, including the ones where detection can't get it right and $baseURL has to be set in
-// configuration.php.
+// on, with and without REQUEST_SCHEME, and behind a proxy with $trustProxyHeaders on and off.
 final class BaseURLTest extends TestCase {
 
 	public function testApacheOverHTTPS(): void {
@@ -66,11 +65,23 @@ final class BaseURLTest extends TestCase {
 		)));
 	}
 
-	// KNOWN GAP, pinned deliberately: REQUEST_SCHEME is not a CGI standard variable. On an
-	// nginx/php-fpm setup that doesn't pass it, detection produces a broken '://host/' and
-	// raises an undefined-key warning. $baseURL has to be set in configuration.php there.
-	// Left as-is for now so this issue stays test-only - see the follow-up note on #21.
-	public function testMissingRequestSchemeProducesABrokenURL(): void {
+	// REQUEST_SCHEME is not a CGI standard variable; nginx/php-fpm setups that don't pass it,
+	// and PHP's built-in server, used to get a broken '://host/' plus an undefined-key warning.
+	public function testMissingRequestSchemeFallsBackToHTTPS(): void {
+		$this->assertSame('https://ota.example.com/', detectBaseURL(array(
+			'HTTP_HOST' => 'ota.example.com',
+			'HTTPS' => 'on',
+		)));
+	}
+
+	public function testMissingRequestSchemeFallsBackToPort443(): void {
+		$this->assertSame('https://ota.example.com/', detectBaseURL(array(
+			'HTTP_HOST' => 'ota.example.com',
+			'SERVER_PORT' => '443',
+		)));
+	}
+
+	public function testNothingButAHostIsPlainHTTPWithoutWarnings(): void {
 		$warnings = array();
 		set_error_handler(function ($number, $message) use (&$warnings) {
 			$warnings[] = $message;
@@ -78,29 +89,92 @@ final class BaseURLTest extends TestCase {
 		});
 
 		try {
-			$baseURL = detectBaseURL(array('HTTP_HOST' => 'ota.example.com'));
+			$baseURL = detectBaseURL(array('HTTP_HOST' => '127.0.0.1:8080'));
 		}
 		finally {
 			restore_error_handler();
 		}
 
-		$this->assertSame('://ota.example.com/', $baseURL);
-		$this->assertCount(1, $warnings);
-		$this->assertStringContainsString('REQUEST_SCHEME', $warnings[0]);
+		$this->assertSame('http://127.0.0.1:8080/', $baseURL);
+		$this->assertSame(array(), $warnings);
 	}
 
-	// KNOWN GAP, pinned deliberately: behind a TLS-terminating proxy the request reaching PHP
-	// is plain HTTP, so detection reports http:// even though the browser used https://.
-	// X-Forwarded-Proto is intentionally not trusted (it's client-settable when the app isn't
-	// actually behind a proxy). Set $baseURL in configuration.php for proxied deployments.
-	public function testProxiedHTTPSIsReportedAsHTTP(): void {
+	// IIS sets HTTPS to "off" on plain requests; that must not read as https.
+	public function testHTTPSOffIsPlainHTTP(): void {
 		$this->assertSame('http://ota.example.com/', detectBaseURL(array(
-			'REQUEST_SCHEME' => 'http',
 			'HTTP_HOST' => 'ota.example.com',
+			'HTTPS' => 'off',
+			'SERVER_PORT' => '80',
+		)));
+	}
+
+	public function testHTTPSBeatsAStaleRequestScheme(): void {
+		$this->assertSame('https://ota.example.com/', detectBaseURL(array(
+			'REQUEST_SCHEME' => 'http',
+			'HTTPS' => 'on',
+			'HTTP_HOST' => 'ota.example.com',
+		)));
+	}
+
+	// Behind a TLS-terminating proxy the request reaching PHP is plain HTTP. X-Forwarded-*
+	// headers are client-settable when there is no proxy, so by default they are ignored...
+	public function testProxyHeadersAreIgnoredByDefault(): void {
+		$this->assertSame('http://internal.example.net:8080/', detectBaseURL(array(
+			'REQUEST_SCHEME' => 'http',
+			'HTTP_HOST' => 'internal.example.net:8080',
 			'HTTP_X_FORWARDED_PROTO' => 'https',
 			'HTTP_X_FORWARDED_HOST' => 'ota.example.com',
 			'SERVER_PORT' => '8080',
 		)));
+	}
+
+	// ...and honoured when $trustProxyHeaders is on.
+	public function testProxyHeadersAreHonouredWhenTrusted(): void {
+		$this->assertSame('https://ota.example.com/', detectBaseURL(array(
+			'REQUEST_SCHEME' => 'http',
+			'HTTP_HOST' => 'internal.example.net:8080',
+			'HTTP_X_FORWARDED_PROTO' => 'https',
+			'HTTP_X_FORWARDED_HOST' => 'ota.example.com',
+			'SERVER_PORT' => '8080',
+		), true));
+
+		// A chain of proxies appends: the first value is the client-facing one.
+		$this->assertSame('https://ota.example.com/', detectBaseURL(array(
+			'HTTP_HOST' => 'internal.example.net',
+			'HTTP_X_FORWARDED_PROTO' => 'https, http',
+			'HTTP_X_FORWARDED_HOST' => 'ota.example.com, internal.example.net',
+		), true));
+
+		// Garbage in X-Forwarded-Proto falls back to local detection rather than being echoed.
+		$this->assertSame('https://ota.example.com/', detectBaseURL(array(
+			'HTTP_HOST' => 'ota.example.com',
+			'HTTPS' => 'on',
+			'HTTP_X_FORWARDED_PROTO' => 'javascript',
+		), true));
+	}
+
+	// resolveBaseURL() runs after configuration.php, so an explicit $baseURL there wins and
+	// $trustProxyHeaders is known by the time detection happens.
+	public function testResolveBaseURLKeepsAConfiguredOverride(): void {
+		$saved = array($GLOBALS['baseURL'] ?? null, $GLOBALS['trustProxyHeaders'] ?? null, $_SERVER);
+		try {
+			$GLOBALS['baseURL'] = 'https://public.example.com/ota/';
+			resolveBaseURL();
+			$this->assertSame('https://public.example.com/ota/', $GLOBALS['baseURL']);
+
+			unset($GLOBALS['baseURL']);
+			$GLOBALS['trustProxyHeaders'] = true;
+			$_SERVER['HTTP_HOST'] = 'internal.example.net';
+			$_SERVER['HTTP_X_FORWARDED_PROTO'] = 'https';
+			$_SERVER['HTTP_X_FORWARDED_HOST'] = 'ota.example.com';
+			resolveBaseURL();
+			$this->assertSame('https://ota.example.com/', $GLOBALS['baseURL']);
+		}
+		finally {
+			list($GLOBALS['baseURL'], $GLOBALS['trustProxyHeaders'], $_SERVER) = $saved;
+			if ($GLOBALS['baseURL'] === null) { unset($GLOBALS['baseURL']); }
+			if ($GLOBALS['trustProxyHeaders'] === null) { unset($GLOBALS['trustProxyHeaders']); }
+		}
 	}
 
 	// Whatever the base URL is, the links built on it have to stay well formed.

@@ -290,4 +290,12 @@ final class SimpleAuthTest extends TestCase {
 		}
 		$this->assertCount(2000, $uuids);
 	}
+
+	// #11: the bundled provider declares `never`, so PHP itself stops requestAuthentication()
+	// from returning and letting a caller fall through to the protected content.
+	public function testRequestAuthenticationNeverReturns(): void {
+		$returnType = (new ReflectionFunction('requestAuthentication'))->getReturnType();
+		$this->assertNotNull($returnType);
+		$this->assertSame('never', (string)$returnType);
+	}
 }
