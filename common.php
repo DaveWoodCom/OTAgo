@@ -14,7 +14,7 @@ if (PHP_VERSION_ID < 80100) {
 }
 
 // OTAgo's own version. Bump this with each release (see the release steps in README.md).
-define('OTAGO_VERSION', '1.1.0');
+define('OTAGO_VERSION', '1.2.0');
 
 // Placeholder token replaced with OTAGO_VERSION when rendering the web template.
 // Not user-configurable, so it lives here rather than in configuration.php.
