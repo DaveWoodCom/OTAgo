@@ -181,6 +181,8 @@ composer test
 
 The tests drive the real globals the scripts use, in a throwaway token directory under the system temp directory - they never touch a deployed configuration. `tests/BaseURLTest.php` covers base URL detection across Apache, nginx/php-fpm (with and without `REQUEST_SCHEME`), non-standard ports, and proxied deployments with `$trustProxyHeaders` on and off.
 
+The same checks - `php -l` over every tracked `.php` file, then the test suite - run in CI on PHP 8.1 through 8.5 (`.forgejo/workflows/ci.yml`).
+
 #### Releasing
 
 When cutting a new release, three things need to stay in sync:
