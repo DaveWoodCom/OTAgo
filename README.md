@@ -83,7 +83,7 @@ Token files **are** credentials - the `?u=` / `?t=` pair in the install URLs is 
 
 `$simpleAuthSecret`: a long random string used to sign token files, so a token can't be repurposed for another user and a file dropped into the token directory by someone else won't be accepted. Leave it unset and OTAgo generates one on first use and stores it (`0600`) in the token directory; set it explicitly if you run several web servers off shared storage. Changing it invalidates every outstanding token.
 
-`$simpleAuthTokenLifetime`: the number of seconds a token should be valid. By default we set it to 3600 seconds (1 hour), which should be fine for most cases. The age is checked every time a token is used, and expired token files are deleted on sight.  
+`$simpleAuthTokenLifetime`: the number of seconds a token should be valid. By default we set it to 3600 seconds (1 hour), which should be fine for most cases. The age is checked every time a token is used, and expired token files are deleted on sight. Left-over expired token files are also swept up when somebody signs in with a password; requests that carry only a `?u=`/`?t=` token don't scan the token directory, so a large or slow token directory doesn't slow down the install itself.  
 
 ##### Custom Authentication
 

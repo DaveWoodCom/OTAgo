@@ -40,6 +40,25 @@ final class SimpleAuthTest extends TestCase {
 		}
 	}
 
+	// An expired token file for some unrelated request, shaped exactly like a real one so the
+	// sweep's glob pattern and its re-checks both accept it.
+	private function writeStaleTokenFile(): string {
+		$filename = sprintf(
+			'%s/%s_%s_%s.%s',
+			$this->tokenDirectory,
+			$GLOBALS['simpleAuthTokenPrefix'],
+			'c3RhbGU',
+			randomUUID(),
+			$GLOBALS['simpleAuthTokenExtension']
+		);
+
+		file_put_contents($filename, str_repeat('a', 64));
+		touch($filename, time() - ($GLOBALS['simpleAuthTokenLifetime'] + 60));
+		clearstatcache(true, $filename);
+
+		return $filename;
+	}
+
 	// Sets the globals a request would have produced. $password is null when the request
 	// carried no Authorization header.
 	private function request(?string $username, ?string $password, ?string $requestUUID = null): void {
@@ -299,6 +318,107 @@ final class SimpleAuthTest extends TestCase {
 		$this->assertFileExists($freshToken);
 		$this->assertFileDoesNotExist($staleToken);
 		$this->assertFileExists($unrelatedFile);
+	}
+
+	// #15: an expired token file belonging to some other request is reclaimed when somebody
+	// authenticates with a password - that is now the only thing that triggers a sweep.
+	public function testPasswordAuthenticationRemovesExpiredTokenFiles(): void {
+		$staleToken = $this->writeStaleTokenFile();
+
+		$this->request('dave', 'secr3t', randomUUID());
+		$this->assertTrue(isValidUser());
+
+		$this->assertFileDoesNotExist($staleToken, 'a password auth should sweep expired tokens');
+		$this->assertFileExists(userTokenFilename(), 'the token just minted must survive the sweep');
+	}
+
+	// #15: token-only requests (manifest.php / ipa.php / apk.php, which is every request the
+	// iOS installer makes) are the hot path and must not scan the token directory. Observable
+	// proof: an expired sibling file is still there afterwards.
+	public function testTokenAuthenticationDoesNotSweepTheTokenDirectory(): void {
+		$requestUUID = randomUUID();
+		$this->request('dave', 'secr3t', $requestUUID);
+		$this->assertTrue(isValidUser());
+
+		$staleToken = $this->writeStaleTokenFile();
+
+		$this->request('dave', null, $requestUUID);
+		$this->assertTrue(isValidUser(), 'precondition: the token still authenticates');
+
+		$this->assertFileExists($staleToken, 'a token-path request should not scan the directory');
+	}
+
+	// A failed authentication shouldn't trigger a sweep either - only a real password auth does.
+	public function testFailedAuthenticationDoesNotSweepTheTokenDirectory(): void {
+		$staleToken = $this->writeStaleTokenFile();
+
+		$this->request('dave', 'wrong', randomUUID());
+		$this->assertFalse(isValidUser());
+
+		$this->assertFileExists($staleToken);
+	}
+
+	// The sweep is scoped with glob('<prefix>_*.<extension>'), but every candidate is
+	// re-checked before it is unlinked. Nothing outside that shape may be deleted, however old.
+	public function testCleanTempDirLeavesNonTokenFilesAlone(): void {
+		$expired = time() - ($GLOBALS['simpleAuthTokenLifetime'] + 60);
+
+		$files = array(
+			$this->tokenDirectory . '/somebody-elses-file.txt',
+			$this->tokenDirectory . '/index.html',
+			$this->tokenDirectory . '/.simpleAuthSecret',
+			// Right extension, wrong prefix.
+			$this->tokenDirectory . '/notOurPrefix_abc.otago',
+			// Right prefix, wrong extension.
+			$this->tokenDirectory . '/simpleAuthToken_abc.txt',
+			// Our prefix but not followed by the '_' separator.
+			$this->tokenDirectory . '/simpleAuthTokenish.otago',
+		);
+
+		foreach ($files as $file) {
+			file_put_contents($file, 'leave me alone');
+			touch($file, $expired);
+		}
+		clearstatcache();
+
+		cleanTempDir();
+
+		foreach ($files as $file) {
+			$this->assertFileExists($file, basename($file) . ' should not have been deleted');
+		}
+	}
+
+	// glob() returns false rather than an array when it can't read the directory. The old
+	// dir()/->read() loop went fatal in that situation; this must simply be a no-op.
+	public function testCleanTempDirIsQuietWhenTheDirectoryIsUnreadable(): void {
+		if (function_exists('posix_geteuid') && posix_geteuid() === 0) {
+			$this->markTestSkipped('running as root: permissions are not enforced');
+		}
+
+		$unreadable = $this->tokenDirectory . '/unreadable';
+		mkdir($unreadable, 0700, true);
+		file_put_contents($unreadable . '/simpleAuthToken_abc.otago', 'x');
+		chmod($unreadable, 0000);
+		clearstatcache();
+
+		if (is_readable($unreadable)) {
+			chmod($unreadable, 0700);
+			$this->markTestSkipped('the filesystem does not enforce directory permissions here');
+		}
+
+		$originalDirectory = $GLOBALS['simpleAuthTempDirectory'];
+		$GLOBALS['simpleAuthTempDirectory'] = $unreadable;
+
+		try {
+			cleanTempDir();
+			$this->assertTrue(true, 'cleanTempDir() returned without a fatal or a warning');
+		}
+		finally {
+			$GLOBALS['simpleAuthTempDirectory'] = $originalDirectory;
+			chmod($unreadable, 0700);
+			@unlink($unreadable . '/simpleAuthToken_abc.otago');
+			@rmdir($unreadable);
+		}
 	}
 
 	/////////////////////////////////////////////////////////////////////////////////////
