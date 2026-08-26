@@ -169,17 +169,6 @@ The `$webTemplate` file needs to be an HTML file that will be displayed to the u
 
 The `$manifestTemplate` file needs to be a valid `manifest.plist` file (see [Apple's documentation](https://support.apple.com/en-ca/guide/deployment-reference-ios/apd11fd167c4/web) for specifics), but instead of specifying the URL for the `.ipa` file, use the `$ipaURLPlaceholder` placeholder (`{{IPAURL}}` in our demo). The authenticated URL will be substituted into the `.plist` file before it's sent to the user's device.
 
-### Contributing
-
-OTAgo can only exist with support from the community. There are many ways you can help continue to make it great.
-
-* Star the project on [GitHub][github-otago].  
-* Report issues/bugs you find.  
-* Suggest features.  
-* Submit pull requests.  
-* Download and install one of my apps: [https://www.cerebralgardens.com/apps/][cerebral-gardens-apps]. Try my newest app: [All the Rings][all-the-rings].  
-* You can visit my [Patreon][patreon-davewoodx] and contribute financially.  
-
 #### Tests
 
 OTAgo has a PHPUnit suite covering the Simple Auth provider and the `$baseURL` detection in `common.php`. Running them needs [Composer][composer]; the OTAgo scripts themselves have no runtime dependencies beyond PHP 8.1+, and nothing in `vendor/` needs to be deployed to your web server.
@@ -203,6 +192,21 @@ When cutting a new release, three things need to stay in sync:
 
 **Note**: when submitting a pull request, please use lots of small commits verses one huge commit. It makes it much easier to merge in when there are several pull requests that need to be combined for a new version.
 
+### Contributing
+
+OTAgo can only exist with support from the community. There are many ways you can help continue to make it great.
+
+* Star the project on [GitHub][github-otago].  
+* Report issues/bugs you find.  
+* Suggest features.  
+* Submit pull requests.  
+* Download and install one of my apps: [https://www.cerebralgardens.com/apps/][cerebral-gardens-apps]. Try my newest app: [All the Rings][all-the-rings].  
+* You can visit my [Patreon][patreon-davewoodx] and contribute financially.  
+
+### AI assistance
+
+Since version 1.2.0, OTAgo was developed with assistance from [anthropic](Anthropic)'s [claude](Claude). An AI-driven code review of 1.1.0 produced a list of security and other issues; Claude then implemented many of the fixes, the PHPUnit test suite and the CI workflow, working issue by issue on feature branches. Every change was directed, reviewed, tested and signed off by me (Dave Wood) before merging, and the project's design decisions remain human decisions. Contributions are welcome whether or not you use AI tooling; the review bar is the same either way.
+
 ## Why's the project called OTAgo, and why is a koala involved?
 
 I'm personally very concerned about the planet and the current Climate Emergency we're in. During the time I've been developing this project, there have been massive bushfires in Australia. I wanted to name the project after the situation. There are several places in Australia named `Otago` which has an obvious link to `OTA`; it felt like a perfect name. The koala is a reference to the hundreds of thousands of animals killed during the fires.
@@ -220,6 +224,8 @@ My thanks to [Freepik](https://www.flaticon.com/authors/freepik) at [flaticon.co
 [twitter-davewoodx]: https://twitter.com/davewoodx
 
 [stackoverflow]: https://stackoverflow.com/questions/tagged/otago
+[anthropic]: https://www.anthropic.com/
+[claude]: https://www.claude.ai/
 
 [cerebral-gardens]: https://www.cerebralgardens.com/
 [cerebral-gardens-apps]: https://www.cerebralgardens.com/apps/
