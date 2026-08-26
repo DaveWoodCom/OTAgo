@@ -7,6 +7,7 @@
   loose `==` comparison evaluated `NULL == NULL`. `isValidUser()` now requires the username to exist and
   compares passwords with `hash_equals()`, which is byte-exact and timing-safe. Anyone running Simple Auth
   should update; treat any build distributed by an affected install as having been publicly downloadable.
+* **1.1.1 (unreleased)**: `ipa.php` and `apk.php` now stream the build in chunks with `Content-Type`, `Content-Length`, `Content-Disposition` and `Accept-Ranges: bytes`, and honour a single-range `Range:` request with a `206` (or a `416` when it can't be satisfied). Downloads show real progress, an interrupted install resumes where it left off instead of starting over, and a large build no longer has to fit in PHP's `memory_limit`. A missing or unreadable file is a plain `404` rather than an empty `200`.
 * **1.1.1 (unreleased)**: Android downloads are now served by a new authenticated `apk.php` (matching `ipa.php`), so the `.apk` no longer has to sit in a publicly accessible folder behind a permanent, shareable URL.
 * **Unreleased**: Renamed `$installURLPlacehHolder` / `$ipaURLPlacehHolder` to `$installURLPlaceholder` / `$ipaURLPlaceholder` (typo fix). The old names still work but emit a deprecation notice; update your `configuration.php`.
 * **Version 1.1.0**: *(2021/09/04)* - Added support for Android

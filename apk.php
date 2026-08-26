@@ -13,6 +13,10 @@ else {
 }
 require_once($authFile);
 
+// The download is cached nowhere: preventCaching() sends no-store because the URL carries the
+// user's credentials in its query string, so an intermediary must not keep a copy. Resumed
+// installs still work - that's what the Range support in sendFile() below is for, rather than
+// a cache revalidating a partial response.
 preventCaching();
 
 if (!isValidUser()) {
@@ -27,11 +31,4 @@ if (!$enableAndroid) {
 
 // Android's package installer needs the correct type, a size to show progress against, and a
 // filename ending in .apk, none of which it can infer from the apk.php URL itself.
-header('Content-Type: application/vnd.android.package-archive');
-header('Content-Disposition: attachment; filename="' . basename($apkFile) . '"');
-$apkFileSize = @filesize($apkFile);
-if ($apkFileSize !== false) {
-	header('Content-Length: ' . $apkFileSize);
-}
-
-readfile($apkFile);
+sendFile($apkFile, 'application/vnd.android.package-archive');

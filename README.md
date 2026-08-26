@@ -37,6 +37,8 @@ Clone the repo into a folder accessible via HTTPS. You must use HTTPS with a val
 
 OTAgo sends `X-Content-Type-Options: nosniff` and `Referrer-Policy: no-referrer` on its own responses. It does not send `Strict-Transport-Security` (HSTS): that's a sticky, site-wide browser policy that can lock users out of your whole domain if your certificate ever lapses, so if you want it, set it at the web-server level (nginx/Apache) where you can control its scope and lifetime.
 
+Builds are streamed by `ipa.php` / `apk.php` in chunks, with `Content-Length`, `Content-Disposition` and `Accept-Ranges: bytes`, and a single-range `Range` request is answered with a `206` so an interrupted install resumes instead of restarting. If you serve very large builds and want the transfer handed off to the web server entirely, add `X-Sendfile` (Apache's [mod_xsendfile][xsendfile]) or `X-Accel-Redirect` ([nginx][nginx-xaccel]) at the web-server level; OTAgo doesn't emit those headers itself, since they do nothing - and would leak the file's path - on a server that isn't configured for them.
+
 ### Configuration
 
 Copy the file `configuration.default.php` to `configuration.php`. You'll configure the system by editing the copy. You should back this file up as it's excluded from the git repository by default.
@@ -180,6 +182,8 @@ My thanks to [Freepik](https://www.flaticon.com/authors/freepik) at [flaticon.co
 [badge-patreon]: https://img.shields.io/badge/Patreon-DaveWoodX-F96854.svg?style=flat
 
 [github-otago]: https://github.com/DaveWoodCom/OTAgo
+[xsendfile]: https://tn123.org/mod_xsendfile/
+[nginx-xaccel]: https://nginx.org/en/docs/http/ngx_http_core_module.html#internal
 [nginx]: https://nginx.org/
 [composer]: https://getcomposer.org
 [apache]: https://httpd.apache.org/
