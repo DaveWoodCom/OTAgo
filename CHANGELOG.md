@@ -1,5 +1,6 @@
 # Change Log
 
+* **Version 1.1.1 (unreleased)**: Simple Auth now also reads Basic credentials from `HTTP_AUTHORIZATION` / `REDIRECT_HTTP_AUTHORIZATION` when `PHP_AUTH_USER` isn't set, so php-fpm/CGI setups that forward the header via `SetEnvIf` or `RewriteRule` work without a shim.
 * **Version 1.1.1 (unreleased)**: `$baseURL` detection no longer depends on the Apache-only `REQUEST_SCHEME`; it also checks `HTTPS` and `SERVER_PORT`, so nginx/php-fpm and PHP's built-in server no longer produce a scheme-less `://host/` install link. New `$trustProxyHeaders` option (default `false`) honours `X-Forwarded-Proto`/`X-Forwarded-Host` behind a TLS-terminating proxy. `$baseURL` is now resolved after `configuration.php` loads, so an override there still wins.
 * **Version 1.1.1 (unreleased)**: OTAgo now requires **PHP 8.1 or newer** (PHP 7 reached end of life in November 2022). Older interpreters get a clear "requires PHP 8.1" error instead of a parse error. The bundled auth providers declare `requestAuthentication(): never`; custom providers should do the same. A `composer.json` is included for the development tooling (PHPUnit) - there are still no runtime dependencies.
 * **Version 1.1.1 (unreleased)**: **Security fix** - Simple Auth accepted any request that supplied an
