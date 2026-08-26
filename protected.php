@@ -12,6 +12,7 @@ else {
 	require_once('configuration.default.php');
 }
 require_once($authFile);
+resolveBaseURL();
 
 preventCaching();
 

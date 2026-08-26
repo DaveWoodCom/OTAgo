@@ -21,14 +21,61 @@ define('OTAGO_VERSION', '1.1.0');
 define('OTAGO_VERSION_PLACEHOLDER', '{{OTAGOVERSION}}');
 
 // Builds the base URL OTAgo links back to itself with, from a $_SERVER-shaped array.
-// HTTP_HOST already includes the port when it's a non-standard one, so don't append SERVER_PORT.
-// Override $baseURL in configuration.php if what this detects isn't right for your setup
-// (see the tests in tests/BaseURLTest.php for the cases it does and doesn't handle).
-function detectBaseURL($server) {
-	return $server['REQUEST_SCHEME'] . '://' . $server['HTTP_HOST'] . '/';
+//
+// The scheme is worked out portably: REQUEST_SCHEME is Apache-only and unset on nginx/php-fpm
+// and PHP's built-in server, so HTTPS and SERVER_PORT are consulted too. HTTP_HOST already
+// includes the port when it's a non-standard one, so SERVER_PORT is never appended.
+//
+// Behind a TLS-terminating proxy the request that reaches PHP is plain HTTP, so the only way
+// to know the browser used https:// is the proxy's X-Forwarded-Proto / X-Forwarded-Host
+// headers. Those are client-settable when there is no proxy in front, so they are only
+// honoured when $trustProxyHeaders is true (set it in configuration.php only if every request
+// really does arrive through a proxy that overwrites them).
+//
+// If detection still isn't right for your setup, set $baseURL in configuration.php directly.
+function detectBaseURL($server, $trustProxyHeaders = false) {
+	$scheme = null;
+	$host = isset($server['HTTP_HOST']) ? $server['HTTP_HOST'] : '';
+
+	if ($trustProxyHeaders) {
+		if (!empty($server['HTTP_X_FORWARDED_PROTO'])) {
+			// A chain of proxies appends values: "https, http". The first is the client's.
+			$forwarded = strtolower(trim(explode(',', $server['HTTP_X_FORWARDED_PROTO'])[0]));
+			if ($forwarded === 'https' || $forwarded === 'http') {
+				$scheme = $forwarded;
+			}
+		}
+		if (!empty($server['HTTP_X_FORWARDED_HOST'])) {
+			$host = trim(explode(',', $server['HTTP_X_FORWARDED_HOST'])[0]);
+		}
+	}
+
+	if ($scheme === null) {
+		if (!empty($server['HTTPS']) && strtolower($server['HTTPS']) !== 'off') {
+			$scheme = 'https';
+		}
+		elseif (!empty($server['REQUEST_SCHEME'])) {
+			$scheme = strtolower($server['REQUEST_SCHEME']);
+		}
+		elseif (isset($server['SERVER_PORT']) && (int)$server['SERVER_PORT'] === 443) {
+			$scheme = 'https';
+		}
+		else {
+			$scheme = 'http';
+		}
+	}
+
+	return $scheme . '://' . $host . '/';
 }
 
-$baseURL = detectBaseURL($_SERVER);
+// Sets $baseURL unless configuration.php already did. Call this after configuration.php has
+// been loaded so that $trustProxyHeaders is known; the entry points that build URLs do.
+function resolveBaseURL() {
+	if (isset($GLOBALS['baseURL'])) {
+		return;
+	}
+	$GLOBALS['baseURL'] = detectBaseURL($_SERVER, !empty($GLOBALS['trustProxyHeaders']));
+}
 
 function preventCaching() {
 	header('Cache-Control: no-cache, no-store, must-revalidate');

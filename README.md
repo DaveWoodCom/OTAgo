@@ -43,7 +43,8 @@ Copy the file `configuration.default.php` to `configuration.php`. You'll configu
 
 Configuration variables:
 
-* `$baseURL` -> During an OTA installation, some files need to be referenced by their full URL. OTAgo uses a default value for the baseURL, however it's not likely going to match your actual URL, so you'll want to set this directly.
+* `$baseURL` -> During an OTA installation, some files need to be referenced by their full URL. OTAgo detects the scheme and host from the request (Apache, nginx/php-fpm and PHP's built-in server all work); set this directly if the detected value isn't right, for example when the public URL differs from the one PHP sees.
+* `$trustProxyHeaders` -> set to `true` only when OTAgo is behind a TLS-terminating reverse proxy or load balancer that sets `X-Forwarded-Proto` (and optionally `X-Forwarded-Host`) on every request. Those headers are then used for `$baseURL`. Leave it `false` otherwise: without a proxy in front, a client could set them itself.
 * `$authFile` -> filename of a `.php` file to handle the authentication (see below).
 * `$webTemplate` -> the `.html` template to be displayed to the user before they install the app.
 * `$installURLPlaceholder` -> a placeholder token for the link that will start the app installation.
@@ -135,7 +136,7 @@ composer install
 composer test
 ```
 
-The tests drive the real globals the scripts use, in a throwaway token directory under the system temp directory - they never touch a deployed configuration. `tests/BaseURLTest.php` also pins the setups where base URL detection *can't* get it right (a TLS-terminating proxy, or an nginx configuration that doesn't pass `REQUEST_SCHEME`), which are the cases where you need to set `$baseURL` yourself in `configuration.php`.
+The tests drive the real globals the scripts use, in a throwaway token directory under the system temp directory - they never touch a deployed configuration. `tests/BaseURLTest.php` covers base URL detection across Apache, nginx/php-fpm (with and without `REQUEST_SCHEME`), non-standard ports, and proxied deployments with `$trustProxyHeaders` on and off.
 
 #### Releasing
 
