@@ -260,10 +260,55 @@ final class SimpleAuthTest extends TestCase {
 		$this->request('dave', null, $requestUUID);
 		$this->assertFalse(isValidUser(), 'a removed user must not authenticate on an outstanding token');
 
-		// The token file itself is untouched and still verifies - it is isValidUser() that
-		// refuses to consult it, which is exactly the behaviour being pinned here.
-		$this->assertFileExists($tokenFile);
-		$this->assertTrue(hasValidToken());
+		// #32: and the rejected request removes the now-orphaned token file, so it doesn't sit
+		// in the token directory until it ages out.
+		$this->assertFileDoesNotExist($tokenFile);
+		$this->assertFalse(hasValidToken());
+	}
+
+	// #32: cleanTempDir() removes a removed user's tokens however fresh they are, while
+	// leaving a current user's fresh token alone.
+	public function testCleanTempDirRemovesTokensOfRemovedUsers(): void {
+		$this->request('dave', 'secr3t');
+		$this->assertTrue(isValidUser());
+		$daveToken = userTokenFilename();
+
+		$this->request('numeric', '1000');
+		$this->assertTrue(isValidUser());
+		$numericToken = userTokenFilename();
+
+		$this->assertFileExists($daveToken);
+		$this->assertFileExists($numericToken);
+
+		unset($GLOBALS['users']['numeric']);
+		cleanTempDir();
+
+		$this->assertFileExists($daveToken, 'a current user\'s fresh token must survive cleanup');
+		$this->assertFileDoesNotExist($numericToken, 'a removed user\'s token must be purged even though it is fresh');
+	}
+
+	// A file whose username part isn't valid base64 can't belong to anyone and is purged too;
+	// files that don't match the token shape at all are never touched.
+	public function testCleanTempDirPurgesUndecodableOwnersButIgnoresForeignFiles(): void {
+		$undecodable = $this->tokenDirectory . '/simpleAuthToken_***_' . randomUUID() . '.otago';
+		$foreign = $this->tokenDirectory . '/notes.txt';
+		file_put_contents($undecodable, 'x');
+		file_put_contents($foreign, 'x');
+
+		cleanTempDir();
+
+		$this->assertFileDoesNotExist($undecodable);
+		$this->assertFileExists($foreign);
+		unlink($foreign);
+	}
+
+	public function testTokenOwnerRoundTrips(): void {
+		foreach (array('dave', 'a~~~~', 'ünïcödé', 'with space', 'x') as $name) {
+			$this->request($name, 'pw');
+			$this->assertSame($name, simpleAuthTokenOwner(basename(userTokenFilename())));
+		}
+		$this->assertNull(simpleAuthTokenOwner('something-else.otago'));
+		$this->assertNull(simpleAuthTokenOwner('simpleAuthToken__' . randomUUID() . '.otago'));
 	}
 
 	// And the password path is closed for a removed user too, even with the right password.
