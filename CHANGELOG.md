@@ -1,5 +1,6 @@
 # Change Log
 
+* **Version 1.1.1 (unreleased)**: Simple Auth passwords in `$users` can now be `password_hash()` digests (bcrypt / argon2), verified with `password_verify()`. Plaintext values keep working, so existing configurations need no change, but the shipped `configuration.default.php` and the README now use and recommend hashes.
 * **Version 1.1.1 (unreleased)**: Simple Auth token files belonging to users removed from `$users` are now deleted - immediately when such a token is presented, and during housekeeping on the next password sign-in - instead of lingering until they age out.
 * **Version 1.1.1 (unreleased)**: Simple Auth now also reads Basic credentials from `HTTP_AUTHORIZATION` / `REDIRECT_HTTP_AUTHORIZATION` when `PHP_AUTH_USER` isn't set, so php-fpm/CGI setups that forward the header via `SetEnvIf` or `RewriteRule` work without a shim.
 * **Version 1.1.1 (unreleased)**: `$baseURL` detection no longer depends on the Apache-only `REQUEST_SCHEME`; it also checks `HTTPS` and `SERVER_PORT`, so nginx/php-fpm and PHP's built-in server no longer produce a scheme-less `://host/` install link. New `$trustProxyHeaders` option (default `false`) honours `X-Forwarded-Proto`/`X-Forwarded-Host` behind a TLS-terminating proxy. `$baseURL` is now resolved after `configuration.php` loads, so an override there still wins.

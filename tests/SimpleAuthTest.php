@@ -543,4 +543,65 @@ final class SimpleAuthTest extends TestCase {
 		$this->assertNotNull($returnType);
 		$this->assertSame('never', (string)$returnType);
 	}
+
+	/////////////////////////////////////////////////////////////////////////////////////
+	// Hashed passwords (#7)
+	/////////////////////////////////////////////////////////////////////////////////////
+
+	public function testHashedPasswordAuthenticatesAndMintsAToken(): void {
+		$GLOBALS['users']['hashed'] = password_hash('c0rrect horse', PASSWORD_DEFAULT);
+
+		$this->request('hashed', 'c0rrect horse');
+		$this->assertTrue(isValidUser());
+		$this->assertFileExists(userTokenFilename());
+	}
+
+	public function testHashedPasswordRejectsWrongPasswordAndTheDigestItself(): void {
+		$digest = password_hash('c0rrect horse', PASSWORD_DEFAULT);
+		$GLOBALS['users']['hashed'] = $digest;
+
+		$this->request('hashed', 'wrong');
+		$this->assertFalse(isValidUser());
+
+		// Pasting the digest as the password must not work either.
+		$this->request('hashed', $digest);
+		$this->assertFalse(isValidUser());
+	}
+
+	public function testArgon2DigestsAreRecognised(): void {
+		if (!defined('PASSWORD_ARGON2ID')) {
+			$this->markTestSkipped('PHP built without argon2');
+		}
+		$GLOBALS['users']['argon'] = password_hash('pw', PASSWORD_ARGON2ID);
+
+		$this->request('argon', 'pw');
+		$this->assertTrue(isValidUser());
+		$this->request('argon', 'pw ');
+		$this->assertFalse(isValidUser());
+	}
+
+	public function testPlaintextPasswordStartingWithADollarStillWorks(): void {
+		$GLOBALS['users']['dollar'] = '$not-a-hash$';
+
+		$this->request('dollar', '$not-a-hash$');
+		$this->assertTrue(isValidUser());
+		$this->request('dollar', '$2y$10$fake');
+		$this->assertFalse(isValidUser());
+	}
+
+	public function testIsPasswordHashClassification(): void {
+		$this->assertTrue(isPasswordHash(password_hash('x', PASSWORD_BCRYPT)));
+		$this->assertFalse(isPasswordHash('secr3t'));
+		$this->assertFalse(isPasswordHash('$2y$'));
+		$this->assertFalse(isPasswordHash(12345));
+		$this->assertFalse(isPasswordHash(null));
+	}
+
+	// The shipped configuration.default.php uses a real digest for "secr3t".
+	public function testShippedDefaultDigestVerifies(): void {
+		$default = file_get_contents(dirname(__DIR__) . '/configuration.default.php');
+		$this->assertMatchesRegularExpression('/\'dave\' => \'(\$2y\$[^\']+)\'/', $default);
+		preg_match('/\'dave\' => \'(\$2y\$[^\']+)\'/', $default, $m);
+		$this->assertTrue(password_verify('secr3t', $m[1]));
+	}
 }
