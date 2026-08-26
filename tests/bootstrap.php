@@ -13,8 +13,8 @@
 
 $otagoRoot = dirname(__DIR__);
 
-// common.php builds $baseURL from $_SERVER at include time, so it needs a plausible request.
-// BaseURLTest calls detectBaseURL() directly rather than relying on these.
+// Give the scripts a plausible request to detect a base URL from (resolveBaseURL() reads
+// $_SERVER). BaseURLTest calls detectBaseURL() directly rather than relying on these.
 $_SERVER['REQUEST_SCHEME'] = 'https';
 $_SERVER['HTTP_HOST'] = 'ota.example.com';
 $_GET = array();
