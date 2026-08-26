@@ -110,9 +110,52 @@ This method takes no arguments. It must return an associated array with name/val
 This method takes no arguments, and never returns. It must send whatever is needed to the client to deny access and request authorization. Like the version in the `simpleAuth.php` file, you can call `requestBasicAuthentication()` to trigger a BASIC authentication request. This method must not return: it has to end the request (call `exit`, as `requestBasicAuthentication()` does), otherwise the protected content would be served to an unauthorized visitor. Declare it with the `never` return type, as the bundled providers do, so PHP enforces that for you. The core OTAgo scripts call `exit()` immediately after `requestAuthentication()` anyway as insurance, so don't remove those calls.
 
 
+### Basic authentication behind php-fpm / CGI
+
+The bundled Simple Auth provider (and any custom provider that calls `requestBasicAuthentication()`) reads the user's credentials from `$_SERVER['PHP_AUTH_USER']` and `$_SERVER['PHP_AUTH_PW']`. PHP only populates those two variables when it can see the request's `Authorization` header - and when PHP runs as php-fpm/FastCGI or CGI (the usual setup on nginx, and common on Apache too), the web server does **not** forward that header unless you tell it to.
+
+The symptom is distinctive: the browser prompts for a username and password, you type the right ones, and OTAgo prompts again - forever. Nothing is logged as an error, because from PHP's point of view the request simply arrived with no credentials.
+
+The fix is one line of web server configuration.
+
+**nginx** (in the `location` block that passes `.php` requests to php-fpm):
+
+```nginx
+location ~ \.php$ {
+    include        fastcgi_params;
+    fastcgi_pass   unix:/run/php/php-fpm.sock;
+    fastcgi_param  HTTP_AUTHORIZATION $http_authorization;
+}
+```
+
+**Apache 2.4.13 and newer** - `CGIPassAuth` is the supported way, and works for both `mod_cgi` and `mod_proxy_fcgi`:
+
+```apache
+<Directory /var/www/otago>
+    CGIPassAuth On
+</Directory>
+```
+
+**Apache, older versions (or if `CGIPassAuth` isn't available to you)** - copy the header into an environment variable with `mod_setenvif`:
+
+```apache
+SetEnvIf Authorization "(.*)" HTTP_AUTHORIZATION=$1
+```
+
+or, with `mod_rewrite`:
+
+```apache
+RewriteEngine On
+RewriteRule .* - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]
+```
+
+Both of these land the header in `HTTP_AUTHORIZATION` (or `REDIRECT_HTTP_AUTHORIZATION`) rather than in `PHP_AUTH_USER`/`PHP_AUTH_PW`, so on those older setups you may also need `php_value` / a shim that decodes it. If you're on Apache 2.4.13+, prefer `CGIPassAuth On`.
+
+Note that this only affects the *first* request, where the user actually types their credentials. Once they're authenticated, OTAgo passes authentication along to `manifest.php`, `ipa.php` and `apk.php` in the query string (`?u=` / `?t=`) rather than in an `Authorization` header. That's deliberate, and not something to "fix": Apple's OTA installer fetches the manifest and the `.ipa` itself and sends no HTTP authentication of its own, so a query-string credential is the only thing that can reach those requests. The `?t=` value is a short-lived, HMAC-signed token (see `$simpleAuthTokenLifetime` above), the responses are sent `no-store`, and OTAgo sends `Referrer-Policy: no-referrer` so the URLs aren't leaked to third parties.
+
 ### Templates
 
-The `$webTemplate` file needs to be an HTML file that will be displayed to the user. This can be basic HTML with a single link, or more complicated with details about the app with instructions for the user on how to install it (trusting the Enterprise certificate for example). The template file itself does not need to be in a publicly accessible folder, however any files the page links to, images, stylesheets, etc must be. The `$webTemplate` file should have at least one link with the `href` set to the `$installURLPlaceholder` (`{{InstallURL}}` in our demo). That link will start the install process when the user taps it.
+The `$webTemplate` file needs to be an HTML file that will be displayed to the user. This can be basic HTML with a single link, or more complicated with details about the app with instructions for the user on how to install it (trusting the Enterprise certificate for example). The template file itself does not need to be in a publicly accessible folder, however any files the page links to, images, stylesheets, etc must be. The `$webTemplate` file should have at least one link with the `href` set to the `$installURLPlaceholder` (`{{InstallURL}}` in our demo). That link will start the install process when the user taps it. The `$webTemplate` file may also contain `{{OTAGOVERSION}}`, which is replaced with the running OTAgo version (`OTAGO_VERSION` in `common.php`); the bundled template uses it in the footer.
 
 The `$manifestTemplate` file needs to be a valid `manifest.plist` file (see [Apple's documentation](https://support.apple.com/en-ca/guide/deployment-reference-ios/apd11fd167c4/web) for specifics), but instead of specifying the URL for the `.ipa` file, use the `$ipaURLPlaceholder` placeholder (`{{IPAURL}}` in our demo). The authenticated URL will be substituted into the `.plist` file before it's sent to the user's device.
 
