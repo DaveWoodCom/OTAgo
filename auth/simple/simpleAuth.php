@@ -28,6 +28,13 @@ function isValidUser() {
 		// Unknown user. Bail out before any comparison: a missing entry evaluates to NULL,
 		// and NULL == NULL (no Authorization header) or NULL == '' (empty password) used to
 		// authenticate anybody who guessed at the query string.
+		//
+		// #28: this bail deliberately sits *above* the token path as well, not just above the
+		// password comparison. A token file is verified only by age and by an HMAC over
+		// username + UUID, so without this a user deleted from $users in configuration.php
+		// would keep authenticating with an already-issued ?u=&t= link until the token aged
+		// out (an hour by default). Requiring the username to still be in $users makes the
+		// deletion take effect on the very next request. Don't move this check down.
 		return false;
 	}
 
@@ -47,7 +54,8 @@ function isValidUser() {
 		return true;
 	}
 	
-	// Otherwise fall back to a token issued by an earlier successful password auth.
+	// Otherwise fall back to a token issued by an earlier successful password auth. Only
+	// reachable for a username that is still present in $users - see the guard above.
 	if (hasValidToken()) {
 		return true;
 	}
