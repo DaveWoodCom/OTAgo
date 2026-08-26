@@ -1,0 +1,11 @@
+---
+# yaml-language-server: $schema=https://json.schemastore.org/yamllint.json
+extends: default
+
+rules:
+  comments: disable
+  line-length: disable
+  braces: disable
+  brackets: disable
+  truthy:
+    check-keys: false

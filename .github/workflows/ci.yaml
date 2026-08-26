@@ -1,23 +1,25 @@
+---
 name: CI
 
 on:
   push:
-    branches: [main, qa, develop, 'feature/**']
+    branches: [main, qa, develop, "feature/**"]
   pull_request:
     branches: [main, qa, develop]
 
 jobs:
   test:
     name: PHP ${{ matrix.php }}
-    # `ubuntu-latest` is one of the labels the Forgejo runners are registered with; the job
-    # itself runs inside the official PHP image below, so the host image doesn't matter.
+    # Lives in .github/workflows so the same file runs on GitHub Actions and on Forgejo (which
+    # falls back to this directory when .forgejo/workflows is absent). `ubuntu-latest` is a label
+    # the Forgejo runners are registered with; the job itself runs inside the PHP image below.
     runs-on: ubuntu-latest
     container:
       image: php:${{ matrix.php }}-cli
     strategy:
       fail-fast: false
       matrix:
-        php: ['8.1', '8.2', '8.3', '8.4', '8.5']
+        php: ["8.1", "8.2", "8.3", "8.4", "8.5"]
 
     steps:
       # The official php images ship without git or node, so the checkout is done by hand
