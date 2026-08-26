@@ -217,6 +217,47 @@ final class SimpleAuthTest extends TestCase {
 		$this->assertFalse(isValidUser());
 	}
 
+	// #28: removing a user from $users must revoke their outstanding tokens immediately.
+	// A token file is verified only by age and by an HMAC over username + UUID, neither of
+	// which knows anything about $users - so the isset() guard in isValidUser() is what
+	// makes the deletion take effect on the next request rather than up to a lifetime later.
+	public function testValidTokenIsRejectedOnceTheUserIsRemoved(): void {
+		$requestUUID = randomUUID();
+
+		$this->request('dave', 'secr3t', $requestUUID);
+		$this->assertTrue(isValidUser());
+
+		$tokenFile = userTokenFilename();
+		$this->assertFileExists($tokenFile);
+
+		// The token is still on disk, still unexpired, and still carries a good signature.
+		$this->request('dave', null, $requestUUID);
+		$this->assertTrue(isValidUser(), 'precondition: the token authenticates while dave exists');
+		$this->assertTrue(hasValidToken());
+
+		// dave is deleted from configuration.php.
+		unset($GLOBALS['users']['dave']);
+
+		$this->request('dave', null, $requestUUID);
+		$this->assertFalse(isValidUser(), 'a removed user must not authenticate on an outstanding token');
+
+		// The token file itself is untouched and still verifies - it is isValidUser() that
+		// refuses to consult it, which is exactly the behaviour being pinned here.
+		$this->assertFileExists($tokenFile);
+		$this->assertTrue(hasValidToken());
+	}
+
+	// And the password path is closed for a removed user too, even with the right password.
+	public function testRemovedUserIsRejectedWithTheirOldPassword(): void {
+		$this->request('dave', 'secr3t');
+		$this->assertTrue(isValidUser());
+
+		unset($GLOBALS['users']['dave']);
+
+		$this->request('dave', 'secr3t');
+		$this->assertFalse(isValidUser());
+	}
+
 	// base64 can contain '/', which would place the token file outside the token directory.
 	public function testTokenFilenameStaysInsideTheTokenDirectory(): void {
 		$this->request('a~~~~', 'x');

@@ -7,7 +7,7 @@
   loose `==` comparison evaluated `NULL == NULL`. `isValidUser()` now requires the username to exist and
   compares passwords with `hash_equals()`, which is byte-exact and timing-safe. Anyone running Simple Auth
   should update; treat any build distributed by an affected install as having been publicly downloadable.
-* **1.1.1 (unreleased)**: Simple Auth hardening - `randomUUID()` now uses `random_bytes()` as its only source and throws if no CSPRNG is available, instead of silently degrading to an empty (identical for every user) token.
+* **1.1.1 (unreleased)**: Simple Auth hardening - `randomUUID()` now uses `random_bytes()` as its only source and throws if no CSPRNG is available, instead of silently degrading to an empty (identical for every user) token. Removing a user from `$users` also revokes their outstanding `?u=&t=` tokens on the next request rather than up to `$simpleAuthTokenLifetime` later; this was already the behaviour and is now covered by tests.
 * **1.1.1 (unreleased)**: Android downloads are now served by a new authenticated `apk.php` (matching `ipa.php`), so the `.apk` no longer has to sit in a publicly accessible folder behind a permanent, shareable URL.
 * **Unreleased**: Renamed `$installURLPlacehHolder` / `$ipaURLPlacehHolder` to `$installURLPlaceholder` / `$ipaURLPlaceholder` (typo fix). The old names still work but emit a deprecation notice; update your `configuration.php`.
 * **Version 1.1.0**: *(2021/09/04)* - Added support for Android
