@@ -145,22 +145,31 @@ function initalizeRequest() {
 	}
 }
 
+// The returned UUID *is* the credential: it becomes the ?t= value and the token filename.
+// So there is no such thing as a safe fallback here - a weak or empty value would hand every
+// user the same token filename. random_bytes() is the only source we accept: it is always
+// present on PHP 8.1+ (the minimum common.php enforces) and it throws rather than returning
+// bytes it can't vouch for. Previously three CSPRNGs were tried in turn and, if none existed,
+// $groups stayed empty and sprintf() raised an ArgumentCountError from deep inside the request.
 function randomUUID() {
-	$groups = array();
-	
-	for ($i=0; $i<8; ++$i) {
-		if (function_exists('random_bytes')) {
-			$groups[] = bin2hex(random_bytes(2));
-		}
-		elseif (function_exists('mcrypt_create_iv')) {
-			$groups[] = bin2hex(mcrypt_create_iv(2, MCRYPT_DEV_URANDOM));
-		} 
-		elseif (function_exists('openssl_random_pseudo_bytes')) {
-			$groups[] = bin2hex(openssl_random_pseudo_bytes(2));
-		}
+	try {
+		$bytes = random_bytes(16);
 	}
-	
-	return sprintf('%s%s-%s-%s-%s-%s%s%s', $groups[0], $groups[1], $groups[2], $groups[3], $groups[4], $groups[5], $groups[6], $groups[7]);
+	catch (Throwable $error) {
+		// Fail loudly and immediately rather than minting a guessable token.
+		throw new RuntimeException('OTAgo: no cryptographically secure random source is available, so a request token cannot be generated.', 0, $error);
+	}
+
+	$hex = bin2hex($bytes);
+
+	return sprintf(
+		'%s-%s-%s-%s-%s',
+		substr($hex, 0, 8),
+		substr($hex, 8, 4),
+		substr($hex, 12, 4),
+		substr($hex, 16, 4),
+		substr($hex, 20, 12)
+	);
 }
 
 function userTokenFilename() {

@@ -291,6 +291,45 @@ final class SimpleAuthTest extends TestCase {
 		$this->assertCount(2000, $uuids);
 	}
 
+	// #14: random_bytes() is the sole source, so every hex position carries real entropy.
+	// The old implementation fell through to no CSPRNG at all if none of the three functions
+	// existed, leaving $groups empty - which either raised an ArgumentCountError or (on older
+	// PHP) produced a constant UUID, i.e. one shared token filename for every user.
+	public function testRandomUUIDIsRandomInEveryPosition(): void {
+		$seen = array_fill(0, 36, array());
+		for ($i = 0; $i < 200; ++$i) {
+			$uuid = randomUUID();
+			$this->assertSame(36, strlen($uuid));
+			for ($position = 0; $position < 36; ++$position) {
+				$seen[$position][$uuid[$position]] = true;
+			}
+		}
+
+		$separators = array(8, 13, 18, 23);
+		for ($position = 0; $position < 36; ++$position) {
+			if (in_array($position, $separators, true)) {
+				$this->assertSame(array('-' => true), $seen[$position]);
+				continue;
+			}
+			$this->assertGreaterThan(1, count($seen[$position]), 'position ' . $position . ' never varied');
+		}
+	}
+
+	// #14: no silent degradation to a weaker (or absent) random source.
+	public function testRandomUUIDHasNoNonCSPRNGFallback(): void {
+		$function = new ReflectionFunction('randomUUID');
+		$source = implode('', array_slice(
+			file($function->getFileName()),
+			$function->getStartLine() - 1,
+			$function->getEndLine() - $function->getStartLine() + 1
+		));
+
+		$this->assertStringContainsString('random_bytes(', $source);
+		$this->assertStringNotContainsString('mcrypt_create_iv', $source);
+		$this->assertStringNotContainsString('openssl_random_pseudo_bytes', $source);
+		$this->assertStringContainsString('RuntimeException', $source, 'a CSPRNG failure must be raised, not swallowed');
+	}
+
 	// #11: the bundled provider declares `never`, so PHP itself stops requestAuthentication()
 	// from returning and letting a caller fall through to the protected content.
 	public function testRequestAuthenticationNeverReturns(): void {
