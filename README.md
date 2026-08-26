@@ -1,6 +1,7 @@
 
 ![OTAgo][otago-logo]
 
+[![badge-ci-github]][ci-workflow-github]
 [![badge-language]][php.net]
 [![badge-license]][license]
 
@@ -180,7 +181,7 @@ composer test
 
 The tests drive the real globals the scripts use, in a throwaway token directory under the system temp directory - they never touch a deployed configuration. `tests/BaseURLTest.php` covers base URL detection across Apache, nginx/php-fpm (with and without `REQUEST_SCHEME`), non-standard ports, and proxied deployments with `$trustProxyHeaders` on and off.
 
-The same checks - `php -l` over every tracked `.php` file, then the test suite - run in CI on PHP 8.1 through 8.5 (`.forgejo/workflows/ci.yaml`).
+The same checks - `php -l` over every tracked `.php` file, then the test suite - run in CI on PHP 8.1 through 8.5 (`.github/workflows/ci.yaml` - Forgejo reads that directory too, so one workflow serves both the Forgejo origin and the GitHub mirror).
 
 #### Releasing
 
@@ -232,6 +233,7 @@ My thanks to [Freepik](https://www.flaticon.com/authors/freepik) at [flaticon.co
 [all-the-rings]: https://alltherings.fit/?s=GH4
 [patreon-davewoodx]: https://www.patreon.com/DaveWoodX
 
+[badge-ci-github]: https://github.com/DaveWoodCom/OTAgo/actions/workflows/ci.yaml/badge.svg?branch=main
 [badge-language]: https://img.shields.io/badge/PHP-8.1%2B-blue.svg?style=flat
 [badge-license]: https://img.shields.io/badge/License-BSD%203--Clause-blue.svg?style=flat
 
@@ -241,6 +243,7 @@ My thanks to [Freepik](https://www.flaticon.com/authors/freepik) at [flaticon.co
 [badge-patreon]: https://img.shields.io/badge/Patreon-DaveWoodX-F96854.svg?style=flat
 
 [github-otago]: https://github.com/DaveWoodCom/OTAgo
+[ci-workflow-github]: https://github.com/DaveWoodCom/OTAgo/actions/workflows/ci.yaml
 [xsendfile]: https://tn123.org/mod_xsendfile/
 [nginx-xaccel]: https://nginx.org/en/docs/http/ngx_http_core_module.html#internal
 [nginx]: https://nginx.org/
