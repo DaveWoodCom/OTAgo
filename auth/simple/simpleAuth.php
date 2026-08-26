@@ -35,6 +35,15 @@ function isValidUser() {
 		// would keep authenticating with an already-issued ?u=&t= link until the token aged
 		// out (an hour by default). Requiring the username to still be in $users makes the
 		// deletion take effect on the very next request. Don't move this check down.
+		//
+		// #32: if the request also carried a token for this now-unknown user, drop the file so
+		// it doesn't sit in the token directory until it ages out. The filename is fully
+		// determined by username + UUID, so this can't touch anyone else's token; when the
+		// UUID was generated for this request there is simply no such file.
+		$staleToken = userTokenFilename();
+		if (is_file($staleToken)) {
+			@unlink($staleToken);
+		}
 		return false;
 	}
 
@@ -399,6 +408,7 @@ function simpleAuthGlobEscape($literal) {
 // include: the token-only requests from the iOS installer are the hot path and shouldn't pay
 // for a directory scan.
 function cleanTempDir() {
+	global $users;
 	global $simpleAuthTempDirectory;
 	global $simpleAuthTokenPrefix;
 	global $simpleAuthTokenExtension;
@@ -434,6 +444,16 @@ function cleanTempDir() {
 			continue;
 		}
 
+		// #32: a token whose owner has been removed from $users is refused on sight by
+		// isValidUser(), so the file is dead weight however fresh it is. Delete it now rather
+		// than waiting for it to age out. A filename whose username part doesn't decode is
+		// treated the same way - it can't belong to anyone.
+		$owner = simpleAuthTokenOwner($filename);
+		if ($owner === null || !is_array($users) || !isset($users[$owner])) {
+			@unlink($fullFilePath);
+			continue;
+		}
+
 		$modifiedTime = @filemtime($fullFilePath);
 		if ($modifiedTime === false) {
 			continue;
@@ -445,6 +465,26 @@ function cleanTempDir() {
 
 		@unlink($fullFilePath);
 	}
+}
+
+// Recovers the username a token filename was issued for (the inverse of userTokenFilename()),
+// or null if the name doesn't have the expected <prefix>_<url-safe base64>_<uuid>.<ext> shape.
+function simpleAuthTokenOwner($filename) {
+	global $simpleAuthTokenPrefix;
+	global $simpleAuthTokenExtension;
+
+	$pattern = '/^' . preg_quote($simpleAuthTokenPrefix, '/') . '_([A-Za-z0-9_-]*)_[0-9a-f-]{36}\.' . preg_quote($simpleAuthTokenExtension, '/') . '$/i';
+	if (!preg_match($pattern, $filename, $matches)) {
+		return null;
+	}
+
+	$encoded = strtr($matches[1], '-_', '+/');
+	$decoded = base64_decode($encoded . str_repeat('=', (4 - strlen($encoded) % 4) % 4), true);
+	if ($decoded === false || $decoded === '') {
+		return null;
+	}
+
+	return $decoded;
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////
