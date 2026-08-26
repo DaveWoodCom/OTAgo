@@ -149,6 +149,21 @@ function initalizeRequest() {
 		$password = $_SERVER['PHP_AUTH_PW'];
 	}
 
+	// Under php-fpm/CGI, PHP only fills PHP_AUTH_USER / PHP_AUTH_PW when the web server hands
+	// it the Authorization header directly. The Apache SetEnvIf / RewriteRule recipes in the
+	// README (and some nginx setups) land it in HTTP_AUTHORIZATION or REDIRECT_HTTP_AUTHORIZATION
+	// instead, so decode that ourselves rather than prompting forever.
+	if (!isset($_SERVER['PHP_AUTH_USER'])) {
+		$header = $_SERVER['HTTP_AUTHORIZATION'] ?? $_SERVER['REDIRECT_HTTP_AUTHORIZATION'] ?? '';
+		$credentials = basicAuthCredentialsFromHeader($header);
+		if ($credentials !== null) {
+			if (empty($username)) {
+				$username = $credentials[0];
+			}
+			$password = $credentials[1];
+		}
+	}
+
 	// Defence in depth: $requestUUID is interpolated into a filesystem path by
 	// userTokenFilename(), so only accept a well-formed UUID. Anything else is
 	// treated as absent, and a fresh UUID is generated below (which simply fails
@@ -159,6 +174,27 @@ function initalizeRequest() {
 	if (empty($requestUUID)) {
 		$requestUUID = randomUUID();
 	}
+}
+
+// Decodes an HTTP Basic "Authorization" header value into array($username, $password).
+// Returns null for anything that isn't a well-formed Basic header: a different scheme, bad
+// base64, or no ':' separator. The password may be empty; the username may not.
+function basicAuthCredentialsFromHeader($header) {
+	if (!is_string($header) || !preg_match('/^\s*Basic\s+([A-Za-z0-9+\/=]+)\s*$/i', $header, $matches)) {
+		return null;
+	}
+
+	$decoded = base64_decode($matches[1], true);
+	if ($decoded === false || strpos($decoded, ':') === false) {
+		return null;
+	}
+
+	list($username, $password) = explode(':', $decoded, 2);
+	if ($username === '') {
+		return null;
+	}
+
+	return array($username, $password);
 }
 
 // The returned UUID *is* the credential: it becomes the ?t= value and the token filename.

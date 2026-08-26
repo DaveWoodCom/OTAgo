@@ -151,7 +151,7 @@ RewriteEngine On
 RewriteRule .* - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]
 ```
 
-Both of these land the header in `HTTP_AUTHORIZATION` (or `REDIRECT_HTTP_AUTHORIZATION`) rather than in `PHP_AUTH_USER`/`PHP_AUTH_PW`, so on those older setups you may also need `php_value` / a shim that decodes it. If you're on Apache 2.4.13+, prefer `CGIPassAuth On`.
+Both of these land the header in `HTTP_AUTHORIZATION` (or `REDIRECT_HTTP_AUTHORIZATION`) rather than in `PHP_AUTH_USER`/`PHP_AUTH_PW`; Simple Auth decodes it from there itself, so no further shim is needed. If you're on Apache 2.4.13+, prefer `CGIPassAuth On` all the same.
 
 Note that this only affects the *first* request, where the user actually types their credentials. Once they're authenticated, OTAgo passes authentication along to `manifest.php`, `ipa.php` and `apk.php` in the query string (`?u=` / `?t=`) rather than in an `Authorization` header. That's deliberate, and not something to "fix": Apple's OTA installer fetches the manifest and the `.ipa` itself and sends no HTTP authentication of its own, so a query-string credential is the only thing that can reach those requests. The `?t=` value is a short-lived, HMAC-signed token (see `$simpleAuthTokenLifetime` above), the responses are sent `no-store`, and OTAgo sends `Referrer-Policy: no-referrer` so the URLs aren't leaked to third parties.
 
