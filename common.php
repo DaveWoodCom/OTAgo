@@ -124,3 +124,172 @@ function resolveDeprecatedPlaceholderNames() {
 		}
 	}
 }
+
+// Parses a `Range:` request header against a known file size.
+//
+// Returns:
+//   array(start, end)  an inclusive byte range to serve as a 206
+//   null               no usable range - serve the whole file as a 200 (no header, an unknown
+//                      unit, a syntactically invalid range, or a multi-range request we choose
+//                      not to split into a multipart/byteranges response)
+//   false              a well-formed but unsatisfiable range - the caller should send a 416
+//
+// Split out of sendFile() so the parsing can be unit tested without an HTTP request. Per
+// RFC 9110 an unparsable Range header is ignored (full response) while a valid one that falls
+// outside the file is a 416, which is why "ignore" and "unsatisfiable" are distinct results.
+function parseRangeHeader($header, $size) {
+	if (!is_string($header) || $header === '' || $size < 0) {
+		return null;
+	}
+
+	// Only the `bytes` unit is defined for ordinary file downloads; anything else is ignored.
+	if (strncasecmp($header, 'bytes=', 6) !== 0) {
+		return null;
+	}
+	$spec = trim(substr($header, 6));
+
+	// A multi-range request would need a multipart/byteranges body. Serving the whole file is
+	// a legal response to any Range request, so take that simpler route.
+	if ($spec === '' || strpos($spec, ',') !== false) {
+		return null;
+	}
+
+	$dash = strpos($spec, '-');
+	if ($dash === false) {
+		return null;
+	}
+	$firstPart = trim(substr($spec, 0, $dash));
+	$lastPart = trim(substr($spec, $dash + 1));
+
+	// An empty file can't satisfy any range.
+	if ($size === 0) {
+		return false;
+	}
+
+	if ($firstPart === '') {
+		// Suffix form: "bytes=-n" asks for the final n bytes.
+		if ($lastPart === '' || !ctype_digit($lastPart)) {
+			return null;
+		}
+		$suffixLength = (int)$lastPart;
+		if ($suffixLength === 0) {
+			return false;
+		}
+		$start = $suffixLength >= $size ? 0 : $size - $suffixLength;
+
+		return array($start, $size - 1);
+	}
+
+	if (!ctype_digit($firstPart)) {
+		return null;
+	}
+	$start = (int)$firstPart;
+
+	if ($lastPart === '') {
+		// "bytes=a-" - from a to the end of the file.
+		if ($start >= $size) {
+			return false;
+		}
+
+		return array($start, $size - 1);
+	}
+
+	if (!ctype_digit($lastPart)) {
+		return null;
+	}
+	$end = (int)$lastPart;
+
+	// A last-byte-pos before the first is invalid rather than unsatisfiable, so it's ignored.
+	if ($end < $start) {
+		return null;
+	}
+	if ($start >= $size) {
+		return false;
+	}
+	if ($end >= $size) {
+		$end = $size - 1;
+	}
+
+	return array($start, $end);
+}
+
+// Streams a file to the client with the headers a mobile package installer needs, honouring a
+// single-range `Range:` request so an interrupted download can be resumed rather than restarted.
+//
+// Reads in chunks through fopen()/fread() rather than readfile() so that a multi-hundred-megabyte
+// build never has to fit in memory_limit, and drops any output buffering first for the same
+// reason (and so the Content-Length we advertise is the length we actually send).
+function sendFile($path, $contentType) {
+	$size = is_file($path) && is_readable($path) ? @filesize($path) : false;
+	$handle = $size === false ? false : @fopen($path, 'rb');
+	if ($handle === false) {
+		// Don't echo the path: it's a server-side location the client has no business seeing.
+		http_response_code(404);
+		header('Content-Type: text/plain');
+		echo "Not found\n";
+
+		return false;
+	}
+
+	$range = parseRangeHeader(isset($_SERVER['HTTP_RANGE']) ? $_SERVER['HTTP_RANGE'] : '', $size);
+
+	header('Content-Type: ' . $contentType);
+	header('Content-Disposition: attachment; filename="' . basename($path) . '"');
+	header('Accept-Ranges: bytes');
+
+	if ($range === false) {
+		fclose($handle);
+		http_response_code(416);
+		header('Content-Range: bytes */' . $size);
+		header('Content-Length: 0');
+
+		return false;
+	}
+
+	if ($range === null) {
+		$start = 0;
+		$end = $size > 0 ? $size - 1 : -1;
+	}
+	else {
+		$start = $range[0];
+		$end = $range[1];
+		http_response_code(206);
+		header('Content-Range: bytes ' . $start . '-' . $end . '/' . $size);
+	}
+
+	$length = $end - $start + 1;
+	header('Content-Length: ' . $length);
+
+	// A HEAD response carries the same headers as the GET would, but no body.
+	if (isset($_SERVER['REQUEST_METHOD']) && strtoupper($_SERVER['REQUEST_METHOD']) === 'HEAD') {
+		fclose($handle);
+
+		return true;
+	}
+
+	// Anything already buffered would be counted against Content-Length and held in memory.
+	while (ob_get_level()) {
+		ob_end_clean();
+	}
+
+	if ($start > 0 && fseek($handle, $start) !== 0) {
+		fclose($handle);
+
+		return false;
+	}
+
+	$chunkSize = 8 * 1024 * 1024;
+	$remaining = $length;
+	while ($remaining > 0 && !feof($handle)) {
+		$buffer = fread($handle, (int)min($chunkSize, $remaining));
+		if ($buffer === false || $buffer === '') {
+			break;
+		}
+		echo $buffer;
+		$remaining -= strlen($buffer);
+		flush();
+	}
+	fclose($handle);
+
+	return true;
+}

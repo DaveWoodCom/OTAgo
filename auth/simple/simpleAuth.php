@@ -28,6 +28,13 @@ function isValidUser() {
 		// Unknown user. Bail out before any comparison: a missing entry evaluates to NULL,
 		// and NULL == NULL (no Authorization header) or NULL == '' (empty password) used to
 		// authenticate anybody who guessed at the query string.
+		//
+		// #28: this bail deliberately sits *above* the token path as well, not just above the
+		// password comparison. A token file is verified only by age and by an HMAC over
+		// username + UUID, so without this a user deleted from $users in configuration.php
+		// would keep authenticating with an already-issued ?u=&t= link until the token aged
+		// out (an hour by default). Requiring the username to still be in $users makes the
+		// deletion take effect on the very next request. Don't move this check down.
 		return false;
 	}
 
@@ -38,6 +45,14 @@ function isValidUser() {
 	// is a byte-exact, timing-safe comparison, which also avoids the numeric-string
 	// coercion '==' would apply (e.g. '1e3' == '1000').
 	if (is_string($password) && is_scalar($expectedPassword) && hash_equals((string)$expectedPassword, $password)) {
+		// #15: housekeeping runs here, on a successful password authentication, rather than on
+		// every include. Password auths are rare (once per browser session); manifest.php /
+		// ipa.php / apk.php requests carrying only ?u=&t= are the common case and no longer pay
+		// for a directory scan. This is safe because expiry is enforced by hasValidToken() at
+		// use time - cleanTempDir() only reclaims disk space, it is not what makes a token stop
+		// working. Sweeping before minting also means the fresh token below is never collected.
+		cleanTempDir();
+
 		// Only a successful password authentication mints/refreshes a token.
 		if (!issueUserToken()) {
 			// The password was right, so this request is authenticated, but without a token
@@ -47,7 +62,8 @@ function isValidUser() {
 		return true;
 	}
 	
-	// Otherwise fall back to a token issued by an earlier successful password auth.
+	// Otherwise fall back to a token issued by an earlier successful password auth. Only
+	// reachable for a username that is still present in $users - see the guard above.
 	if (hasValidToken()) {
 		return true;
 	}
@@ -145,22 +161,31 @@ function initalizeRequest() {
 	}
 }
 
+// The returned UUID *is* the credential: it becomes the ?t= value and the token filename.
+// So there is no such thing as a safe fallback here - a weak or empty value would hand every
+// user the same token filename. random_bytes() is the only source we accept: it is always
+// present on PHP 8.1+ (the minimum common.php enforces) and it throws rather than returning
+// bytes it can't vouch for. Previously three CSPRNGs were tried in turn and, if none existed,
+// $groups stayed empty and sprintf() raised an ArgumentCountError from deep inside the request.
 function randomUUID() {
-	$groups = array();
-	
-	for ($i=0; $i<8; ++$i) {
-		if (function_exists('random_bytes')) {
-			$groups[] = bin2hex(random_bytes(2));
-		}
-		elseif (function_exists('mcrypt_create_iv')) {
-			$groups[] = bin2hex(mcrypt_create_iv(2, MCRYPT_DEV_URANDOM));
-		} 
-		elseif (function_exists('openssl_random_pseudo_bytes')) {
-			$groups[] = bin2hex(openssl_random_pseudo_bytes(2));
-		}
+	try {
+		$bytes = random_bytes(16);
 	}
-	
-	return sprintf('%s%s-%s-%s-%s-%s%s%s', $groups[0], $groups[1], $groups[2], $groups[3], $groups[4], $groups[5], $groups[6], $groups[7]);
+	catch (Throwable $error) {
+		// Fail loudly and immediately rather than minting a guessable token.
+		throw new RuntimeException('OTAgo: no cryptographically secure random source is available, so a request token cannot be generated.', 0, $error);
+	}
+
+	$hex = bin2hex($bytes);
+
+	return sprintf(
+		'%s-%s-%s-%s-%s',
+		substr($hex, 0, 8),
+		substr($hex, 8, 4),
+		substr($hex, 12, 4),
+		substr($hex, 16, 4),
+		substr($hex, 20, 12)
+	);
 }
 
 function userTokenFilename() {
@@ -321,50 +346,75 @@ function hasValidToken() {
 	return true;
 }
 
+// Escapes glob() metacharacters in a literal that is interpolated into a pattern, so a
+// $simpleAuthTokenPrefix or $simpleAuthTokenExtension containing '*', '?' or '[' can't widen
+// the match. Every candidate is re-checked below regardless, so this is belt and braces.
+function simpleAuthGlobEscape($literal) {
+	return preg_replace('/([*?\[\]\\\\])/', '\\\\$1', (string)$literal);
+}
+
+// Best effort housekeeping: deletes token files that are past $simpleAuthTokenLifetime.
+//
+// This is *not* what expires a token - hasValidToken() checks the age at use time and removes
+// expired files on sight, so an unreadable or unscannable directory here cannot leave a token
+// valid forever. All this does is stop dead files accumulating.
+//
+// Called from isValidUser() on a successful password authentication (#15), not on every
+// include: the token-only requests from the iOS installer are the hot path and shouldn't pay
+// for a directory scan.
 function cleanTempDir() {
 	global $simpleAuthTempDirectory;
 	global $simpleAuthTokenPrefix;
 	global $simpleAuthTokenExtension;
 	global $simpleAuthTokenLifetime;
-	
-	// Best effort housekeeping only. Expiry is enforced by hasValidToken() at use time, so an
-	// unreadable directory here can no longer leave tokens valid forever.
+
 	if (!is_dir($simpleAuthTempDirectory) || !is_readable($simpleAuthTempDirectory)) {
 		return;
 	}
 
-	$tempDir = @dir($simpleAuthTempDirectory);
-	if ($tempDir === false) {
+	// Scope the scan to our own files instead of enumerating the whole directory. glob()
+	// returns false on failure (and on some platforms when the directory is unreadable), so
+	// the result is guarded before it is walked - the old dir()/->read() loop went fatal there.
+	$pattern = $simpleAuthTempDirectory . '/' . simpleAuthGlobEscape($simpleAuthTokenPrefix) . '_*.' . simpleAuthGlobEscape($simpleAuthTokenExtension);
+	$candidates = @glob($pattern, GLOB_NOSORT);
+	if (!is_array($candidates)) {
 		return;
 	}
 
-	while (($filename = $tempDir->read()) !== false) {
-		$fullFilePath = $simpleAuthTempDirectory . '/' . $filename;
-		$extension = pathinfo($fullFilePath, PATHINFO_EXTENSION);
-		
-		// Check file extension matches our expected value
-		if ($extension != $simpleAuthTokenExtension) { 
+	foreach ($candidates as $fullFilePath) {
+		// glob() matched the shape, but re-verify before unlinking: never delete anything that
+		// isn't a plain file whose name really does carry our prefix and extension.
+		if (!is_file($fullFilePath)) {
 			continue;
 		}
 
-		// Check the file prefix matches our expected value		
-		if (substr($filename, 0, strlen($simpleAuthTokenPrefix)) != $simpleAuthTokenPrefix) {
+		$filename = basename($fullFilePath);
+
+		if (pathinfo($filename, PATHINFO_EXTENSION) !== $simpleAuthTokenExtension) {
 			continue;
 		}
-		
-		// Check if the file is
-		$fileAge = time() - filemtime($fullFilePath);
-		if ($fileAge < $simpleAuthTokenLifetime) {
+
+		if (strpos($filename, $simpleAuthTokenPrefix . '_') !== 0) {
 			continue;
 		}
-		
-		unlink($fullFilePath);
+
+		$modifiedTime = @filemtime($fullFilePath);
+		if ($modifiedTime === false) {
+			continue;
+		}
+
+		if ((time() - $modifiedTime) < $simpleAuthTokenLifetime) {
+			continue;
+		}
+
+		@unlink($fullFilePath);
 	}
-	$tempDir->close();
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////
 // Initialize Request
 /////////////////////////////////////////////////////////////////////////////////////////
 initalizeRequest();
-cleanTempDir();
+// #15: cleanTempDir() is deliberately *not* called here. It now runs from isValidUser() on a
+// successful password authentication, so token-only requests don't scan the token directory.
+// Token expiry does not depend on it - hasValidToken() enforces the lifetime at use time.

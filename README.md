@@ -37,6 +37,8 @@ Clone the repo into a folder accessible via HTTPS. You must use HTTPS with a val
 
 OTAgo sends `X-Content-Type-Options: nosniff` and `Referrer-Policy: no-referrer` on its own responses. It does not send `Strict-Transport-Security` (HSTS): that's a sticky, site-wide browser policy that can lock users out of your whole domain if your certificate ever lapses, so if you want it, set it at the web-server level (nginx/Apache) where you can control its scope and lifetime.
 
+Builds are streamed by `ipa.php` / `apk.php` in chunks, with `Content-Length`, `Content-Disposition` and `Accept-Ranges: bytes`, and a single-range `Range` request is answered with a `206` so an interrupted install resumes instead of restarting. If you serve very large builds and want the transfer handed off to the web server entirely, add `X-Sendfile` (Apache's [mod_xsendfile][xsendfile]) or `X-Accel-Redirect` ([nginx][nginx-xaccel]) at the web-server level; OTAgo doesn't emit those headers itself, since they do nothing - and would leak the file's path - on a server that isn't configured for them.
+
 ### Configuration
 
 Copy the file `configuration.default.php` to `configuration.php`. You'll configure the system by editing the copy. You should back this file up as it's excluded from the git repository by default.
@@ -83,7 +85,7 @@ Token files **are** credentials - the `?u=` / `?t=` pair in the install URLs is 
 
 `$simpleAuthSecret`: a long random string used to sign token files, so a token can't be repurposed for another user and a file dropped into the token directory by someone else won't be accepted. Leave it unset and OTAgo generates one on first use and stores it (`0600`) in the token directory; set it explicitly if you run several web servers off shared storage. Changing it invalidates every outstanding token.
 
-`$simpleAuthTokenLifetime`: the number of seconds a token should be valid. By default we set it to 3600 seconds (1 hour), which should be fine for most cases. The age is checked every time a token is used, and expired token files are deleted on sight.  
+`$simpleAuthTokenLifetime`: the number of seconds a token should be valid. By default we set it to 3600 seconds (1 hour), which should be fine for most cases. The age is checked every time a token is used, and expired token files are deleted on sight. Left-over expired token files are also swept up when somebody signs in with a password; requests that carry only a `?u=`/`?t=` token don't scan the token directory, so a large or slow token directory doesn't slow down the install itself.  
 
 ##### Custom Authentication
 
@@ -110,9 +112,52 @@ This method takes no arguments. It must return an associated array with name/val
 This method takes no arguments, and never returns. It must send whatever is needed to the client to deny access and request authorization. Like the version in the `simpleAuth.php` file, you can call `requestBasicAuthentication()` to trigger a BASIC authentication request. This method must not return: it has to end the request (call `exit`, as `requestBasicAuthentication()` does), otherwise the protected content would be served to an unauthorized visitor. Declare it with the `never` return type, as the bundled providers do, so PHP enforces that for you. The core OTAgo scripts call `exit()` immediately after `requestAuthentication()` anyway as insurance, so don't remove those calls.
 
 
+### Basic authentication behind php-fpm / CGI
+
+The bundled Simple Auth provider (and any custom provider that calls `requestBasicAuthentication()`) reads the user's credentials from `$_SERVER['PHP_AUTH_USER']` and `$_SERVER['PHP_AUTH_PW']`. PHP only populates those two variables when it can see the request's `Authorization` header - and when PHP runs as php-fpm/FastCGI or CGI (the usual setup on nginx, and common on Apache too), the web server does **not** forward that header unless you tell it to.
+
+The symptom is distinctive: the browser prompts for a username and password, you type the right ones, and OTAgo prompts again - forever. Nothing is logged as an error, because from PHP's point of view the request simply arrived with no credentials.
+
+The fix is one line of web server configuration.
+
+**nginx** (in the `location` block that passes `.php` requests to php-fpm):
+
+```nginx
+location ~ \.php$ {
+    include        fastcgi_params;
+    fastcgi_pass   unix:/run/php/php-fpm.sock;
+    fastcgi_param  HTTP_AUTHORIZATION $http_authorization;
+}
+```
+
+**Apache 2.4.13 and newer** - `CGIPassAuth` is the supported way, and works for both `mod_cgi` and `mod_proxy_fcgi`:
+
+```apache
+<Directory /var/www/otago>
+    CGIPassAuth On
+</Directory>
+```
+
+**Apache, older versions (or if `CGIPassAuth` isn't available to you)** - copy the header into an environment variable with `mod_setenvif`:
+
+```apache
+SetEnvIf Authorization "(.*)" HTTP_AUTHORIZATION=$1
+```
+
+or, with `mod_rewrite`:
+
+```apache
+RewriteEngine On
+RewriteRule .* - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]
+```
+
+Both of these land the header in `HTTP_AUTHORIZATION` (or `REDIRECT_HTTP_AUTHORIZATION`) rather than in `PHP_AUTH_USER`/`PHP_AUTH_PW`, so on those older setups you may also need `php_value` / a shim that decodes it. If you're on Apache 2.4.13+, prefer `CGIPassAuth On`.
+
+Note that this only affects the *first* request, where the user actually types their credentials. Once they're authenticated, OTAgo passes authentication along to `manifest.php`, `ipa.php` and `apk.php` in the query string (`?u=` / `?t=`) rather than in an `Authorization` header. That's deliberate, and not something to "fix": Apple's OTA installer fetches the manifest and the `.ipa` itself and sends no HTTP authentication of its own, so a query-string credential is the only thing that can reach those requests. The `?t=` value is a short-lived, HMAC-signed token (see `$simpleAuthTokenLifetime` above), the responses are sent `no-store`, and OTAgo sends `Referrer-Policy: no-referrer` so the URLs aren't leaked to third parties.
+
 ### Templates
 
-The `$webTemplate` file needs to be an HTML file that will be displayed to the user. This can be basic HTML with a single link, or more complicated with details about the app with instructions for the user on how to install it (trusting the Enterprise certificate for example). The template file itself does not need to be in a publicly accessible folder, however any files the page links to, images, stylesheets, etc must be. The `$webTemplate` file should have at least one link with the `href` set to the `$installURLPlaceholder` (`{{InstallURL}}` in our demo). That link will start the install process when the user taps it.
+The `$webTemplate` file needs to be an HTML file that will be displayed to the user. This can be basic HTML with a single link, or more complicated with details about the app with instructions for the user on how to install it (trusting the Enterprise certificate for example). The template file itself does not need to be in a publicly accessible folder, however any files the page links to, images, stylesheets, etc must be. The `$webTemplate` file should have at least one link with the `href` set to the `$installURLPlaceholder` (`{{InstallURL}}` in our demo). That link will start the install process when the user taps it. The `$webTemplate` file may also contain `{{OTAGOVERSION}}`, which is replaced with the running OTAgo version (`OTAGO_VERSION` in `common.php`); the bundled template uses it in the footer.
 
 The `$manifestTemplate` file needs to be a valid `manifest.plist` file (see [Apple's documentation](https://support.apple.com/en-ca/guide/deployment-reference-ios/apd11fd167c4/web) for specifics), but instead of specifying the URL for the `.ipa` file, use the `$ipaURLPlaceholder` placeholder (`{{IPAURL}}` in our demo). The authenticated URL will be substituted into the `.plist` file before it's sent to the user's device.
 
@@ -137,6 +182,8 @@ composer test
 ```
 
 The tests drive the real globals the scripts use, in a throwaway token directory under the system temp directory - they never touch a deployed configuration. `tests/BaseURLTest.php` covers base URL detection across Apache, nginx/php-fpm (with and without `REQUEST_SCHEME`), non-standard ports, and proxied deployments with `$trustProxyHeaders` on and off.
+
+The same checks - `php -l` over every tracked `.php` file, then the test suite - run in CI on PHP 8.1 through 8.5 (`.forgejo/workflows/ci.yml`).
 
 #### Releasing
 
@@ -180,6 +227,8 @@ My thanks to [Freepik](https://www.flaticon.com/authors/freepik) at [flaticon.co
 [badge-patreon]: https://img.shields.io/badge/Patreon-DaveWoodX-F96854.svg?style=flat
 
 [github-otago]: https://github.com/DaveWoodCom/OTAgo
+[xsendfile]: https://tn123.org/mod_xsendfile/
+[nginx-xaccel]: https://nginx.org/en/docs/http/ngx_http_core_module.html#internal
 [nginx]: https://nginx.org/
 [composer]: https://getcomposer.org
 [apache]: https://httpd.apache.org/
